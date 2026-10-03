@@ -26,6 +26,6 @@
 - Add Engineering Memory Lite with versioned local decision/constraint/incident records, deterministic ranked retrieval, CLI recall, and a read-only MCP search tool.
 - Document trust limits and scope the roadmap to the v0.3 application candidate.
 
-No stable release or npm publication has occurred.
+No stable release has occurred. The first public development preview is available as `@callabens/projectmind@0.1.0-dev.1` on npm.
 
 The manifest is prepared for the first reviewed `0.1.0-dev.1` preview as `@callabens/projectmind` on the non-default `next` npm tag. This does not mark a stable release.

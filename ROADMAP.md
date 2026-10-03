@@ -21,10 +21,10 @@ Before `v0.1.0` can be released:
 - [x] deleted-symbol/base-ref comparison fixtures
 - [x] reproducible CI-published package and full consumer/action validation
 - [x] cross-platform runner decision; tested OS support documented
-- [ ] npm namespace ownership and distribution naming confirmed
+- [x] npm namespace ownership and distribution naming confirmed (`@callabens/projectmind`)
 - [x] first real repository pilot: ProjectMind verifies its own trust-boundary intent in CI
 - [ ] clear demo recording
-  - deterministic recording runner and storyboard are complete; the final captured video remains
+  - deterministic recording runner, storyboard and final MP4 are complete; a public GitHub-hosted attachment remains
 
 ## v0.2 — real-world verification
 
