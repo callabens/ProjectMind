@@ -9,7 +9,7 @@ steps:
   - uses: actions/checkout@v4
     with:
       fetch-depth: 0
-  - uses: CayraAgent/ProjectMind@<reviewed-commit-sha>
+  - uses: callabens/ProjectMind@<reviewed-commit-sha>
     with:
       intent-id: PM-0001
       trust-repository-code: 'true'

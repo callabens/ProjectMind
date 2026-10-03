@@ -1,5 +1,5 @@
 {
-  "$id": "https://github.com/CayraAgent/ProjectMind/blob/main/schemas/proofpack-v1.schema.json",
+  "$id": "https://github.com/callabens/ProjectMind/blob/main/schemas/proofpack-v1.schema.json",
   "$ref": "#/definitions/ProjectMindProofPackV1",
   "definitions": {
     "ProjectMindProofPackV1": {

@@ -2,7 +2,7 @@
 
 This is a development preview. No stable version is currently declared supported.
 
-Report command-execution, verification-bypass, secret-exposure or path-traversal vulnerabilities privately through [GitHub Security Advisories](https://github.com/CayraAgent/ProjectMind/security/advisories/new) when enabled. If private reporting is unavailable, request a private reporting channel in a public issue without exploit details.
+Report command-execution, verification-bypass, secret-exposure or path-traversal vulnerabilities privately through [GitHub Security Advisories](https://github.com/callabens/ProjectMind/security/advisories/new) when enabled. If private reporting is unavailable, request a private reporting channel in a public issue without exploit details.
 
 ## Execution
 
