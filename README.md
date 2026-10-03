@@ -91,6 +91,8 @@ The MCP server exposes `projectmind_request_verification`, never a status-settin
 
 This repository checks in its reviewed [ProjectMind configuration](.projectmind/config.json), [Constitution](.projectmind/constitution.json), and [trust-boundary intent](.projectmind/intents/PM-0001.json). CI runs ProjectMind against those contracts and uploads the resulting historical ProofPack. See [self-hosting notes](docs/SELF-HOSTING.md).
 
+The released npm preview was also exercised against a pinned revision of the independent public `broofa/airjs` repository. The [sanitized pilot record](docs/pilots/AIRJS.md) documents initialization, an honest unbound `NOT_VERIFIED` result, the explicit testcase binding, the resulting `VERIFIED` ProofPack lineage, and the product gap found during the run.
+
 ## Principles
 
 Local first · Model agnostic · Deterministic core · AI optional · Evidence > claims · No self-verification API · Git native · Open formats · Extensible · Secure by default
