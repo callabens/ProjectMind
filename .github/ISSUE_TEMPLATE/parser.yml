@@ -1,0 +1,37 @@
+name: Parser or detector contribution
+description: Propose a focused language, import or project detector improvement
+title: "parser: "
+labels: [enhancement, parser]
+body:
+  - type: textarea
+    id: syntax
+    attributes:
+      label: Unsupported syntax or detection case
+      description: Provide a minimal source/config fixture and the expected graph or detection result.
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: Resolution boundaries
+      description: Explain local/external modules, ignored paths, symlinks and unresolved cases.
+    validations:
+      required: true
+  - type: textarea
+    id: regression
+    attributes:
+      label: Regression coverage
+      description: List positive, negative and ambiguity fixtures needed for acceptance.
+    validations:
+      required: true
+  - type: dropdown
+    id: platforms
+    attributes:
+      label: Platforms affected
+      multiple: true
+      options:
+        - Linux
+        - macOS
+        - Windows
+    validations:
+      required: true
