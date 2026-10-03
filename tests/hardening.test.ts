@@ -250,6 +250,70 @@ test("graph resolves TypeScript project-reference declaration outputs to scanned
   assert.deepEqual(graph.unresolvedImports, (await buildMindGraph(root, config)).unresolvedImports);
 });
 
+test("graph resolves local package imports and conditional exports without escaping package boundaries", async (t) => {
+  const { root, config } = await fixture(t);
+  await mkdir(join(root, "packages", "app", "src", "features"), { recursive: true });
+  await mkdir(join(root, "packages", "lib", "src", "features"), { recursive: true });
+  await writeFile(join(root, "packages", "app", "package.json"), JSON.stringify({
+    name: "@fixture/app",
+    type: "module",
+    imports: {
+      "#utils": "./src/utils.ts",
+      "#features/*": { import: "./src/features/*.ts" },
+      "#external": "external-package",
+      "#missing-condition": { browser: "./src/browser.ts" },
+      "#escape": "../outside.ts",
+    },
+  }));
+  await writeFile(join(root, "packages", "lib", "package.json"), JSON.stringify({
+    name: "@fixture/lib",
+    type: "module",
+    exports: {
+      ".": { import: "./src/index.ts" },
+      "./feature/*": { node: "./src/features/*.ts" },
+      "./external": "external-package",
+      "./missing-condition": { browser: "./src/browser.ts" },
+      "./escape": "../outside.ts",
+    },
+  }));
+  await writeFile(join(root, "packages", "app", "src", "utils.ts"), "export const utility = true;\n");
+  await writeFile(join(root, "packages", "app", "src", "features", "one.ts"), "export const one = true;\n");
+  await writeFile(join(root, "packages", "lib", "src", "index.ts"), "export const library = true;\n");
+  await writeFile(join(root, "packages", "lib", "src", "features", "one.ts"), "export const feature = true;\n");
+  await writeFile(join(root, "packages", "app", "src", "index.ts"), [
+    'import { utility } from "#utils";',
+    'import { one } from "#features/one";',
+    'import "#external";',
+    'import "#missing-condition";',
+    'import "#escape";',
+    'import { library } from "@fixture/lib";',
+    'import { feature } from "@fixture/lib/feature/one";',
+    'import "@fixture/lib/external";',
+    'import "@fixture/lib/missing-condition";',
+    'import "@fixture/lib/escape";',
+    "export const result = utility && one && library && feature;",
+  ].join("\n"));
+
+  const graph = await buildMindGraph(root, config);
+  const pathById = new Map(graph.nodes.map((node) => [node.id, node.path]));
+  const imports = graph.edges.filter((edge) => edge.type === "IMPORTS").map((edge) => [pathById.get(edge.from), pathById.get(edge.to)]);
+  for (const target of [
+    "packages/app/src/utils.ts",
+    "packages/app/src/features/one.ts",
+    "packages/lib/src/index.ts",
+    "packages/lib/src/features/one.ts",
+  ]) assert.ok(imports.some(([from, to]) => from === "packages/app/src/index.ts" && to === target));
+  assert.deepEqual(graph.unresolvedImports, [
+    { sourcePath: "packages/app/src/index.ts", specifier: "@fixture/lib/escape", reason: "outside-scan" },
+    { sourcePath: "packages/app/src/index.ts", specifier: "@fixture/lib/external", reason: "not-found" },
+    { sourcePath: "packages/app/src/index.ts", specifier: "@fixture/lib/missing-condition", reason: "not-found" },
+    { sourcePath: "packages/app/src/index.ts", specifier: "#escape", reason: "outside-scan" },
+    { sourcePath: "packages/app/src/index.ts", specifier: "#external", reason: "not-found" },
+    { sourcePath: "packages/app/src/index.ts", specifier: "#missing-condition", reason: "not-found" },
+  ]);
+  assert.deepEqual(graph.unresolvedImports, (await buildMindGraph(root, config)).unresolvedImports);
+});
+
 test("scanner includes and exclusions apply; symlink sources are not followed", async (t) => {
   const { root } = await fixture(t);
   await mkdir(join(root, "vendor"));
