@@ -3,7 +3,7 @@
 Requires Node 22.18+ and pnpm 11.25.0.
 
 ```bash
-git clone https://github.com/CayraAgent/ProjectMind.git
+git clone https://github.com/callabens/ProjectMind.git
 cd ProjectMind
 pnpm install --frozen-lockfile
 pnpm validate
