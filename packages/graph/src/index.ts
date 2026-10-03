@@ -21,21 +21,28 @@ function resolveCandidates(base: string, files: Map<string, GraphNode>): string 
   return candidates.find((candidate) => files.has(candidate));
 }
 
-function resolvePythonImport(sourcePath: string, specifier: string, files: Map<string, GraphNode>): string | undefined {
+function resolvePythonImport(root: string, sourcePath: string, specifier: string, files: Map<string, GraphNode>): { path?: string; reason?: UnresolvedImport["reason"] } {
   const dots = specifier.match(/^\.+/)?.[0].length ?? 0;
   const module = specifier.slice(dots).replaceAll(".", "/");
   let base = dots ? dirname(sourcePath) : "";
-  for (let level = 1; level < dots; level += 1) base = dirname(base);
+  for (let level = 1; level < dots; level += 1) {
+    if (!base || base === ".") return { reason: "outside-scan" };
+    base = dirname(base);
+  }
+  if (dots && (!base || base === ".")) return { reason: "outside-scan" };
   const path = normalizeRel(join(base, module));
+  if (path === ".." || path.startsWith("../")) return { reason: "outside-scan" };
   const candidates = [`${path}.py`, `${path}/__init__.py`];
   const direct = candidates.find((item) => files.has(item));
-  if (direct) return direct;
+  if (direct) return { path: direct };
   if (!dots) {
     const suffixes = candidates.map((item) => `/${item}`);
     const matches = [...files.keys()].filter((item) => candidates.includes(item) || suffixes.some((suffix) => item.endsWith(suffix)));
-    if (matches.length === 1) return matches[0];
+    const match = matches.length === 1 ? matches[0] : undefined;
+    if (match) return { path: match };
   }
-  return undefined;
+  if (candidates.some((item) => existsSync(join(root, item)))) return { reason: "outside-scan" };
+  return { reason: "not-found" };
 }
 
 function pythonModuleExists(specifier: string): boolean {
@@ -184,9 +191,9 @@ async function compilerProjects(root: string): Promise<TypeScriptProject[]> {
 
 function resolveImport(root: string, sourcePath: string, specifier: string, language: "javascript" | "python", files: Map<string, GraphNode>, projects: TypeScriptProject[], workspaces: Map<string, PackageManifest>): { path?: string; external?: boolean; reason?: UnresolvedImport["reason"] } {
   if (language === "python") {
-    const path = resolvePythonImport(sourcePath, specifier, files);
-    if (path) return { path };
-    return pythonModuleExists(specifier) ? { external: true } : { reason: "not-found" };
+    const target = resolvePythonImport(root, sourcePath, specifier, files);
+    if (target.path || specifier.startsWith(".")) return target;
+    return pythonModuleExists(specifier) ? { external: true } : target;
   }
   if (specifier.startsWith(".")) {
     const direct = resolveCandidates(normalizeRel(join(dirname(sourcePath), specifier)), files);
