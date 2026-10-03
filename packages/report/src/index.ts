@@ -18,9 +18,9 @@ export function formatInit(config: ProjectConfig, graph: MindGraph): string {
   ].join("\n");
 }
 
-export function formatIntent(intent: IntentContract): string {
+export function formatIntent(intent: IntentContract, status = `Intent ${intent.id} created`): string {
   return [
-    `Intent ${intent.id} created`,
+    status,
     "",
     intent.title,
     "",

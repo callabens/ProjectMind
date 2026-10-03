@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { initializeProject, loadConfig } from "../packages/core/src/project.ts";
@@ -14,6 +14,7 @@ import { summarizeChanges, repositoryState } from "../packages/git/src/index.ts"
 import { createProofPack } from "../packages/proofpack/src/index.ts";
 
 const execFileAsync = promisify(execFile);
+const cli = resolve("apps/cli/src/index.ts");
 
 async function fixture(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "projectmind-"));
@@ -104,4 +105,13 @@ test("config can be loaded after initialization", async () => {
   const config = await loadConfig(root);
   assert.equal(config.version, 1);
   assert.ok(config.verification.commands.some((command) => command.kind === "test"));
+});
+
+test("CLI reports requirement binding as an update", async () => {
+  const root = await fixture();
+  const config = await initializeProject(root);
+  await createIntent(root, "Keep authentication working", ["Authentication remains functional"], [], []);
+  const { stdout } = await execFileAsync(process.execPath, ["--experimental-strip-types", cli, "intent", "bind", "REQ-1", "--command", config.verification.commands[0]!.command, "--test", "login"], { cwd: root });
+  assert.match(stdout, /Requirement REQ-1 bound in intent PM-0001/);
+  assert.doesNotMatch(stdout, /Intent PM-0001 created/);
 });
