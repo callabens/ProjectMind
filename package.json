@@ -46,6 +46,10 @@
     "./provider-examples/git-diff-check": {
       "types": "./dist/packages/sdk/src/examples/git-diff-check.d.ts",
       "import": "./dist/packages/sdk/src/examples/git-diff-check.js"
+    },
+    "./provider-examples/eslint-check": {
+      "types": "./dist/packages/sdk/src/examples/eslint-check.d.ts",
+      "import": "./dist/packages/sdk/src/examples/eslint-check.js"
     }
   },
   "files": [
