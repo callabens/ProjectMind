@@ -57,6 +57,8 @@ interface PackageManifest {
   name?: string;
   dependencies: string[];
   entry?: string;
+  imports?: Record<string, unknown>;
+  exports?: string | Record<string, unknown>;
 }
 
 const ignoredDirectories = new Set([".git", ".projectmind", "node_modules", "dist", "build", "coverage", ".next", ".venv", "venv", "__pycache__", ".pytest_cache"]);
@@ -71,6 +73,7 @@ async function findPackageManifests(root: string, dir = root): Promise<PackageMa
       devDependencies?: Record<string, string>;
       peerDependencies?: Record<string, string>;
       exports?: string | Record<string, unknown>;
+      imports?: Record<string, unknown>;
       types?: string;
       module?: string;
       main?: string;
@@ -82,6 +85,8 @@ async function findPackageManifests(root: string, dir = root): Promise<PackageMa
       ...(pkg.name ? { name: pkg.name } : {}),
       dependencies: [...new Set([...Object.keys(pkg.dependencies ?? {}), ...Object.keys(pkg.devDependencies ?? {}), ...Object.keys(pkg.peerDependencies ?? {})])],
       ...(entry ? { entry } : {}),
+      ...(pkg.imports ? { imports: pkg.imports } : {}),
+      ...(pkg.exports ? { exports: pkg.exports } : {}),
     });
   }
   for (const item of (await readdir(dir, { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name))) {
@@ -97,6 +102,47 @@ function packageSpecifier(specifier: string): string {
 function insideRoot(root: string, path: string): boolean {
   const rel = relative(root, path);
   return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+}
+
+const supportedConditions = ["types", "import", "node", "default"];
+
+function conditionalTarget(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (!value || Array.isArray(value) || typeof value !== "object") return undefined;
+  const record = value as Record<string, unknown>;
+  for (const condition of supportedConditions) {
+    if (condition in record) {
+      const target = conditionalTarget(record[condition]);
+      if (target) return target;
+    }
+  }
+  return undefined;
+}
+
+function mappedTarget(map: Record<string, unknown>, specifier: string): string | undefined {
+  if (specifier in map) return conditionalTarget(map[specifier]);
+  const matches = Object.keys(map)
+    .filter((key) => key.split("*").length === 2)
+    .map((key) => {
+      const [prefix = "", suffix = ""] = key.split("*");
+      return specifier.startsWith(prefix) && specifier.endsWith(suffix)
+        ? { key, matched: specifier.slice(prefix.length, specifier.length - suffix.length), specificity: prefix.length + suffix.length }
+        : undefined;
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item))
+    .sort((a, b) => b.specificity - a.specificity || a.key.localeCompare(b.key));
+  const match = matches[0];
+  const target = match ? conditionalTarget(map[match.key]) : undefined;
+  return target && match ? target.replaceAll("*", match.matched) : undefined;
+}
+
+function localMappedPath(root: string, manifest: PackageManifest, target: string | undefined): { path?: string; reason?: UnresolvedImport["reason"] } {
+  if (!target) return { reason: "not-found" };
+  if (target.startsWith("../") || isAbsolute(target)) return { reason: "outside-scan" };
+  if (!target.startsWith("./")) return { reason: "not-found" };
+  const path = resolve(manifest.dir, target);
+  if (!insideRoot(manifest.dir, path) || !insideRoot(root, path)) return { reason: "outside-scan" };
+  return { path };
 }
 
 interface TypeScriptProject {
@@ -146,10 +192,22 @@ function resolveImport(root: string, sourcePath: string, specifier: string, lang
     const direct = resolveCandidates(normalizeRel(join(dirname(sourcePath), specifier)), files);
     if (direct) return { path: direct };
   }
+  const outputSources = new Map(projects.flatMap((item) => [...item.outputs.entries()]));
+  if (specifier.startsWith("#")) {
+    const sourceDir = dirname(join(root, sourcePath));
+    const owner = [...workspaces.values()]
+      .filter((item) => insideRoot(item.dir, sourceDir))
+      .sort((a, b) => b.dir.length - a.dir.length)[0];
+    if (!owner?.imports) return { reason: "not-found" };
+    const mapped = localMappedPath(root, owner, mappedTarget(owner.imports, specifier));
+    if (!mapped.path) return mapped;
+    const source = outputSources.get(normalize(mapped.path)) ?? mapped.path;
+    const matched = resolveCandidates(normalizeRel(relative(root, source)), files);
+    return matched ? { path: matched } : { reason: "outside-scan" };
+  }
   const absoluteSource = normalize(join(root, sourcePath));
   const project = projects.find((item) => item.files.has(absoluteSource));
   const options = project?.options ?? projects[0]?.options ?? { moduleResolution: ts.ModuleResolutionKind.NodeNext, module: ts.ModuleKind.NodeNext };
-  const outputSources = new Map(projects.flatMap((item) => [...item.outputs.entries()]));
   const result = ts.resolveModuleName(specifier, absoluteSource, options, ts.sys).resolvedModule;
   if (result && !result.isExternalLibraryImport) {
     if (!insideRoot(root, result.resolvedFileName)) return { reason: "outside-scan" };
@@ -162,7 +220,16 @@ function resolveImport(root: string, sourcePath: string, specifier: string, lang
   const workspace = workspaces.get(packageName);
   if (workspace) {
     const subpath = specifier.slice(packageName.length).replace(/^\//, "");
-    const base = subpath ? join(workspace.dir, subpath) : join(workspace.dir, workspace.entry ?? "src/index.ts");
+    let base: string;
+    if (workspace.exports) {
+      const exportKey = subpath ? `./${subpath}` : ".";
+      const map = typeof workspace.exports === "string" ? { ".": workspace.exports } : workspace.exports;
+      const mapped = localMappedPath(root, workspace, mappedTarget(map, exportKey));
+      if (!mapped.path) return mapped;
+      base = mapped.path;
+    } else {
+      base = subpath ? join(workspace.dir, subpath) : join(workspace.dir, workspace.entry ?? "src/index.ts");
+    }
     const source = outputSources.get(normalize(base)) ?? base;
     const matched = resolveCandidates(normalizeRel(relative(root, source)), files);
     return matched ? { path: matched } : { reason: "outside-scan" };
