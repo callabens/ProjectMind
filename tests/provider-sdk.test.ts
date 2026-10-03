@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { defineVerificationProvider, mergeProviderCommands, PROVIDER_API_VERSION, resolveProviderCommands } from "../packages/sdk/src/index.ts";
 import { gitDiffCheckProvider } from "../packages/sdk/src/examples/git-diff-check.ts";
+import { eslintCheckProvider } from "../packages/sdk/src/examples/eslint-check.ts";
 import type { ProjectConfig } from "../packages/core/src/index.ts";
 
 const config: ProjectConfig = {
@@ -17,6 +18,13 @@ test("v1 provider resolves validated commands without producing evidence or verd
   assert.deepEqual(commands, [{ kind: "static", command: "git diff --check", required: false, provider: "generic-command", timeoutMs: 30_000 }]);
   assert.ok(!("collect" in gitDiffCheckProvider));
   assert.ok(Object.isFrozen(gitDiffCheckProvider.manifest));
+});
+
+test("ESLint example resolves a local-only optional lint command", async () => {
+  const commands = await resolveProviderCommands(eslintCheckProvider, context);
+  assert.deepEqual(commands, [{ kind: "lint", command: "npx --no-install eslint .", required: false, provider: "generic-command", timeoutMs: 60_000 }]);
+  assert.ok(!("collect" in eslintCheckProvider));
+  assert.ok(Object.isFrozen(eslintCheckProvider.manifest));
 });
 
 test("provider commands merge only through the validated ProjectConfig contract", async () => {
