@@ -105,7 +105,7 @@ async function main(): Promise<void> {
       optionValues(args, "intent")[0],
       optionValues(args, "test"),
     );
-    console.log(formatIntent(intent));
+    console.log(formatIntent(intent, `Requirement ${requirementId} bound in intent ${intent.id}`));
     return;
   }
 
