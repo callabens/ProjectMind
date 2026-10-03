@@ -36,4 +36,4 @@ The fingerprint includes HEAD, Git-tracked and nonignored untracked file bytes/m
 
 ## Incremental interfaces
 
-Public contracts currently have version 1 and are development-preview formats. ProofPack v1 has a generated public JSON Schema and a checked-in compatibility fixture. Provider SDK v1 uses the explicit `projectmind.provider/v1` API identifier and is exported as `projectmind/provider-sdk`. An interface change must carry a compatibility note and tests before a stable release.
+Public contracts currently have version 1 and are development-preview formats. ProofPack v1 has a generated public JSON Schema and a checked-in compatibility fixture. Provider SDK v1 uses the explicit `projectmind.provider/v1` API identifier and is exported as `@callabens/projectmind/provider-sdk`. An interface change must carry a compatibility note and tests before a stable release.

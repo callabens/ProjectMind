@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/callabens/ProjectMind/security/advisories/new
+    about: Report verification bypasses, command-execution issues and secret exposure privately.
+  - name: Contribution guide
+    url: https://github.com/callabens/ProjectMind/blob/main/CONTRIBUTING.md
+    about: Review scope, testing and trust-model expectations before proposing work.

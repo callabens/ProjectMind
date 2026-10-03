@@ -1,0 +1,40 @@
+name: Provider contribution
+description: Propose a focused Provider SDK v1 integration
+title: "provider: "
+labels: [enhancement, provider]
+body:
+  - type: input
+    id: tool
+    attributes:
+      label: Tool or ecosystem
+      description: Name and official documentation URL.
+    validations:
+      required: true
+  - type: textarea
+    id: commands
+    attributes:
+      label: Exact commands
+      description: List every command the provider would contribute and whether it can modify the repository.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence semantics
+      description: Explain the evidence kind/provider, expected outputs and failure behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: trust
+    attributes:
+      label: Trust boundary
+      description: Explain installation, operator review, timeouts and why the provider cannot set verdicts.
+    validations:
+      required: true
+  - type: textarea
+    id: tests
+    attributes:
+      label: Acceptance tests
+      description: Include malformed, failing, timeout and repository-mutation cases where applicable.
+    validations:
+      required: true
