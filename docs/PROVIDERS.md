@@ -41,4 +41,9 @@ Provider modules are executable Node.js code and therefore must be treated like 
 
 A provider cannot bypass the verifier merely by returning a passing command definition: requirements still need explicit bindings, structured test requirements still require built-in structured providers and exact testcase names, and all evidence must come from one fresh unchanged repository-state run.
 
-The packaged `@callabens/projectmind/provider-examples/git-diff-check` example contributes optional `git diff --check` static evidence and demonstrates the complete v1 surface.
+## Packaged examples
+
+- `@callabens/projectmind/provider-examples/git-diff-check` contributes optional `git diff --check` static evidence.
+- `@callabens/projectmind/provider-examples/eslint-check` contributes optional `npx --no-install eslint .` lint evidence. `--no-install` prevents npm from downloading a missing ESLint binary, but the repository's ESLint configuration and plugins remain executable trusted dependencies and must be reviewed before the command is enabled.
+
+Both examples only return command definitions. Importing one does not edit configuration or execute its command; the operator must explicitly merge and run it through ProjectMind.
