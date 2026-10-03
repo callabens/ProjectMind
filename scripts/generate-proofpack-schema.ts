@@ -8,7 +8,7 @@ const schema = zodToJsonSchema(proofPackSchema, {
   $refStrategy: "root",
 });
 const document = {
-  $id: "https://github.com/CayraAgent/ProjectMind/blob/main/schemas/proofpack-v1.schema.json",
+  $id: "https://github.com/callabens/ProjectMind/blob/main/schemas/proofpack-v1.schema.json",
   ...schema,
 };
 await writeFile(new URL("../schemas/proofpack-v1.schema.json", import.meta.url), `${JSON.stringify(document, null, 2)}\n`);
