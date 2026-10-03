@@ -5,14 +5,15 @@ ProjectMind's source CLI and deterministic core are tested on Linux and macOS wi
 | Surface | Linux | macOS | Windows |
 | --- | --- | --- | --- |
 | CLI scan, graph, intent contracts and change analysis | CI tested | CI tested | CI tested |
-| Command execution, timeouts, MCP and end-to-end verification | CI tested | CI tested | Not yet claimed |
+| Command execution, timeouts and end-to-end verification | CI tested | CI tested | CI tested |
+| MCP stdio lifecycle | CI tested | CI tested | Not yet claimed |
 | ProofPack schemas and structured evidence parsing | CI tested | CI tested | CI tested |
 | Git working-tree and base-ref analysis | CI tested | CI tested | CI tested |
 | Development build and tests | Full suite | Full suite | Portable deterministic subset; the invalid-on-Windows newline-filename fixture is skipped |
 | Composite GitHub Action | CI tested on Ubuntu | Not yet claimed | Not yet claimed |
 | Preview package creation and consumer smoke | CI tested on Ubuntu | Not yet claimed | Not yet claimed |
 
-Git and a supported Node.js runtime are required. Verification commands use the operating system's default shell, so reviewed `.projectmind/config.json` commands must be valid for the runner that executes them. ProjectMind normalizes repository paths in its portable contracts and does not follow source symlinks while scanning. Windows command-tree termination uses `taskkill`, but end-to-end Windows command execution remains outside the tested support claim until its runner lifecycle suite is stable.
+Git and a supported Node.js runtime are required. Verification commands use the operating system's default shell, so reviewed `.projectmind/config.json` commands must be valid for the runner that executes them. ProjectMind normalizes repository paths in its portable contracts and does not follow source symlinks while scanning. Windows CI exercises successful and non-zero commands, timeout and output-limit termination, descendant cleanup, shared run lineage, repository drift detection, and end-to-end verification. Windows command-tree termination uses `taskkill`; MCP stdio remains outside the Windows support claim.
 
 Scanning configured `.py` files requires a Python 3 interpreter (`python3`, `python`, or the Windows `py -3` launcher). Generated pytest commands use `python -m pytest`; operators must review that command for their environment and install pytest before enabling execution.
 

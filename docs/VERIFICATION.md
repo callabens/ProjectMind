@@ -51,7 +51,7 @@ An agent cannot directly set a verdict through MCP. Removing a `mark_verified` t
 
 `preserve` and `outOfScope` remain declarations. Architecture enforcement comes only from the reviewed `.projectmind/constitution.json` contract. Dependency rules use resolved graph import edges; sensitive-path rules require fresh passing evidence kinds when matching files change. The graph's TESTED_BY filename links remain heuristic and are not evidence.
 
-No authentication or secret handling guarantees should be inferred from a passing ProjectMind check. The runner inherits the operator's environment, executes trusted repository shell commands, and provides no sandbox/network isolation. Linux/macOS process groups are terminated on timeout; Windows descendant cleanup is not guaranteed and is not part of the tested platform set.
+No authentication or secret handling guarantees should be inferred from a passing ProjectMind check. The runner inherits the operator's environment, executes trusted repository shell commands, and provides no sandbox/network isolation. Linux/macOS process groups and Windows process trees are terminated on timeout; descendant cleanup is covered by the platform lifecycle suite but is not a security sandbox against hostile processes.
 
 ## ProofPack
 
