@@ -9,7 +9,7 @@ import {
   PROVIDER_API_VERSION,
   defineVerificationProvider,
   mergeProviderCommands,
-} from "projectmind/provider-sdk";
+} from "@callabens/projectmind/provider-sdk";
 ```
 
 A provider declares an exact API version, reverse-domain-style identifier, SemVer implementation version, and its single v1 capability:
@@ -41,4 +41,4 @@ Provider modules are executable Node.js code and therefore must be treated like 
 
 A provider cannot bypass the verifier merely by returning a passing command definition: requirements still need explicit bindings, structured test requirements still require built-in structured providers and exact testcase names, and all evidence must come from one fresh unchanged repository-state run.
 
-The packaged `projectmind/provider-examples/git-diff-check` example contributes optional `git diff --check` static evidence and demonstrates the complete v1 surface.
+The packaged `@callabens/projectmind/provider-examples/git-diff-check` example contributes optional `git diff --check` static evidence and demonstrates the complete v1 surface.
