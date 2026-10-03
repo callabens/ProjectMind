@@ -191,6 +191,65 @@ test("graph resolves tsconfig aliases, NodeNext paths, workspace packages, cycle
   assert.deepEqual(graph.unresolvedImports, (await buildMindGraph(root, config)).unresolvedImports);
 });
 
+test("graph resolves TypeScript project-reference declaration outputs to scanned sources", async (t) => {
+  const { root, config } = await fixture(t);
+  config.scanner.include = ["packages/app", "packages/core"];
+  await mkdir(join(root, "packages", "app", "src"), { recursive: true });
+  await mkdir(join(root, "packages", "core", "src"), { recursive: true });
+  await mkdir(join(root, "packages", "hidden", "src"), { recursive: true });
+  const references = [{ path: "packages/app" }, { path: "packages/core" }, { path: "packages/missing" }];
+  if (process.platform !== "win32") {
+    const external = await mkdtemp(join(tmpdir(), "pm-external-reference-"));
+    t.after(() => rm(external, { recursive: true, force: true }));
+    await writeFile(join(external, "tsconfig.json"), JSON.stringify({ compilerOptions: { composite: true }, include: ["index.ts"] }));
+    await writeFile(join(external, "package.json"), JSON.stringify({ name: "@fixture/escape", types: "index.ts" }));
+    await writeFile(join(external, "index.ts"), "export const escape = true;\n");
+    await symlink(external, join(root, "packages", "escape"), "dir");
+    references.push({ path: "packages/escape" });
+  }
+  await writeFile(join(root, "tsconfig.json"), JSON.stringify({
+    files: [],
+    references,
+  }));
+  await writeFile(join(root, "packages", "app", "tsconfig.json"), JSON.stringify({
+    compilerOptions: { composite: true, module: "NodeNext", moduleResolution: "NodeNext", rootDir: "src", outDir: "dist" },
+    include: ["src"],
+    references: [{ path: "../core" }],
+  }));
+  await writeFile(join(root, "packages", "app", "package.json"), JSON.stringify({ name: "@fixture/app", type: "module" }));
+  await writeFile(join(root, "packages", "core", "tsconfig.json"), JSON.stringify({
+    compilerOptions: { composite: true, module: "NodeNext", moduleResolution: "NodeNext", rootDir: "src", outDir: "dist", declaration: true },
+    include: ["src"],
+    references: [{ path: "../app" }],
+  }));
+  await writeFile(join(root, "packages", "core", "package.json"), JSON.stringify({ name: "@fixture/core", type: "module", types: "dist/index.d.ts" }));
+  await writeFile(join(root, "packages", "hidden", "tsconfig.json"), JSON.stringify({
+    compilerOptions: { composite: true, rootDir: "src", outDir: "dist", declaration: true }, include: ["src"],
+  }));
+  await writeFile(join(root, "packages", "hidden", "package.json"), JSON.stringify({ name: "@fixture/hidden", types: "dist/index.d.ts" }));
+  await writeFile(join(root, "packages", "core", "src", "index.ts"), "export const core = true;\n");
+  await writeFile(join(root, "packages", "hidden", "src", "index.ts"), "export const hidden = true;\n");
+  await writeFile(join(root, "packages", "app", "src", "index.ts"), [
+    'import { core } from "@fixture/core";',
+    'import { hidden } from "@fixture/hidden";',
+    'import "@fixture/missing";',
+    ...(process.platform === "win32" ? [] : ['import "@fixture/escape";']),
+    "export const app = core && hidden;",
+  ].join("\n"));
+
+  const graph = await buildMindGraph(root, config);
+  const pathById = new Map(graph.nodes.map((node) => [node.id, node.path]));
+  const imports = graph.edges.filter((edge) => edge.type === "IMPORTS").map((edge) => [pathById.get(edge.from), pathById.get(edge.to)]);
+  assert.ok(imports.some(([from, to]) => from === "packages/app/src/index.ts" && to === "packages/core/src/index.ts"));
+  const expected = [
+    ...(process.platform === "win32" ? [] : [{ sourcePath: "packages/app/src/index.ts", specifier: "@fixture/escape", reason: "not-found" as const }]),
+    { sourcePath: "packages/app/src/index.ts", specifier: "@fixture/hidden", reason: "outside-scan" },
+    { sourcePath: "packages/app/src/index.ts", specifier: "@fixture/missing", reason: "not-found" },
+  ];
+  assert.deepEqual(graph.unresolvedImports, expected);
+  assert.deepEqual(graph.unresolvedImports, (await buildMindGraph(root, config)).unresolvedImports);
+});
+
 test("scanner includes and exclusions apply; symlink sources are not followed", async (t) => {
   const { root } = await fixture(t);
   await mkdir(join(root, "vendor"));
