@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseNodeTestJunit } from "../packages/evidence/src/index.ts";
+import { parseNodeTestJunit, parsePytestJunit } from "../packages/evidence/src/index.ts";
 import { verifyIntent } from "../packages/verifier/src/index.ts";
 import type { EvidenceRecord, IntentContract, ProjectConfig, TestCaseEvidence } from "../packages/core/src/index.ts";
 
@@ -73,6 +73,29 @@ test("Node JUnit parser records passed, skipped, and failed testcases", () => {
   ]);
   assert.equal(summary.cases[0]?.durationMs, 5);
   assert.equal(parseNodeTestJunit('<testsuites><testcase name="A &amp; B"/></testsuites>').cases[0]?.name, "A & B");
+});
+
+test("nested JUnit suites count each testcase once and treat error elements as failures", () => {
+  const xml = `<?xml version="1.0"?><testsuites tests="99" failures="0">
+    <testsuite name="outer" tests="2">
+      <testcase name="outer passes" classname="outer" time="0.001"/>
+      <testsuite name="inner" tests="1" errors="1">
+        <testcase name="inner crashes" classname="inner" time="0.002">
+          <error type="Error">unexpected crash</error>
+        </testcase>
+      </testsuite>
+    </testsuite>
+  </testsuites>`;
+  for (const summary of [parseNodeTestJunit(xml), parsePytestJunit(xml)]) {
+    assert.deepEqual(
+      { discovered: summary.discovered, passed: summary.passed, failed: summary.failed, skipped: summary.skipped },
+      { discovered: 2, passed: 1, failed: 1, skipped: 0 },
+    );
+    assert.deepEqual(summary.cases.map((item) => [item.name, item.status, item.durationMs]), [
+      ["outer passes", "passed", 1],
+      ["inner crashes", "failed", 2],
+    ]);
+  }
 });
 
 test("zero discovered tests fail a required structured command", () => {
