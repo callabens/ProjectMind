@@ -171,12 +171,13 @@ function resolveImport(root: string, sourcePath: string, specifier: string, lang
 }
 
 export async function buildMindGraph(root: string, config: ProjectConfig): Promise<MindGraph> {
-  const parsed = await parseProject(root, config.scanner.extensions, config.scanner.exclude, config.scanner.include);
-  const manifests = await findPackageManifests(root);
+  const graphRoot = await realpath(resolve(root));
+  const parsed = await parseProject(graphRoot, config.scanner.extensions, config.scanner.exclude, config.scanner.include);
+  const manifests = await findPackageManifests(graphRoot);
   const workspaceByName = new Map(manifests.filter((item): item is PackageManifest & { name: string } => Boolean(item.name)).map((item) => [item.name, item]));
   const dependencyNames = [...new Set(manifests.flatMap((item) => item.dependencies))].filter((name) => !workspaceByName.has(name)).sort();
   const packages = dependencyNames.map((name) => ({ id: stableId("pkg", name), type: "PACKAGE" as const, name }));
-  const projects = await compilerProjects(root);
+  const projects = await compilerProjects(graphRoot);
   const nodes = [...parsed.files, ...parsed.symbols, ...packages];
   const edges: GraphEdge[] = [];
   const unresolvedImports: UnresolvedImport[] = [];
@@ -198,7 +199,7 @@ export async function buildMindGraph(root: string, config: ProjectConfig): Promi
   for (const item of parsed.imports) {
     const from = fileByPath.get(item.sourcePath);
     if (!from) continue;
-    const target = resolveImport(resolve(root), item.sourcePath, item.specifier, item.language, fileByPath, projects, workspaceByName);
+    const target = resolveImport(graphRoot, item.sourcePath, item.specifier, item.language, fileByPath, projects, workspaceByName);
     if (target.path) {
       const to = fileByPath.get(target.path);
       if (!to) continue;
