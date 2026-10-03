@@ -1,7 +1,7 @@
 import { builtinModules } from "node:module";
 import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { readdir, readFile } from "node:fs/promises";
+import { readdir, readFile, realpath } from "node:fs/promises";
 import { dirname, extname, isAbsolute, join, normalize, relative, resolve } from "node:path";
 import ts from "typescript";
 import { nowIso, stableId, writeJson, type GraphEdge, type GraphNode, type MindGraph, type ProjectConfig, type UnresolvedImport } from "../../core/src/index.ts";
@@ -99,18 +99,44 @@ function insideRoot(root: string, path: string): boolean {
   return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
 }
 
-async function compilerOptions(root: string): Promise<ts.CompilerOptions> {
-  const configPath = ts.findConfigFile(root, ts.sys.fileExists);
-  if (!configPath) return { moduleResolution: ts.ModuleResolutionKind.NodeNext, module: ts.ModuleKind.NodeNext };
-  const loaded = ts.readConfigFile(configPath, ts.sys.readFile);
-  if (loaded.error) throw new Error(`Cannot read TypeScript config: ${ts.flattenDiagnosticMessageText(loaded.error.messageText, " ")}`);
-  const parsed = ts.parseJsonConfigFileContent(loaded.config, ts.sys, dirname(configPath));
-  const error = parsed.errors.find((item) => item.category === ts.DiagnosticCategory.Error);
-  if (error) throw new Error(`Cannot parse TypeScript config: ${ts.flattenDiagnosticMessageText(error.messageText, " ")}`);
-  return parsed.options;
+interface TypeScriptProject {
+  configPath: string;
+  options: ts.CompilerOptions;
+  files: Set<string>;
+  outputs: Map<string, string>;
 }
 
-function resolveImport(root: string, sourcePath: string, specifier: string, language: "javascript" | "python", files: Map<string, GraphNode>, options: ts.CompilerOptions, workspaces: Map<string, PackageManifest>): { path?: string; external?: boolean; reason?: UnresolvedImport["reason"] } {
+async function compilerProjects(root: string): Promise<TypeScriptProject[]> {
+  const configPath = ts.findConfigFile(root, ts.sys.fileExists);
+  if (!configPath) return [];
+  const projects: TypeScriptProject[] = [];
+  const visited = new Set<string>();
+  const resolvedRoot = await realpath(root);
+  const visit = async (input: string): Promise<void> => {
+    const candidate = extname(input) ? input : join(input, "tsconfig.json");
+    if (!existsSync(candidate)) return;
+    const canonical = await realpath(candidate);
+    if (!insideRoot(resolvedRoot, canonical) || visited.has(canonical)) return;
+    visited.add(canonical);
+    const loaded = ts.readConfigFile(canonical, ts.sys.readFile);
+    if (loaded.error) throw new Error(`Cannot read TypeScript config: ${ts.flattenDiagnosticMessageText(loaded.error.messageText, " ")}`);
+    const parsed = ts.parseJsonConfigFileContent(loaded.config, ts.sys, dirname(canonical), undefined, canonical);
+    const error = parsed.errors.find((item) => item.category === ts.DiagnosticCategory.Error);
+    if (error) throw new Error(`Cannot parse TypeScript config: ${ts.flattenDiagnosticMessageText(error.messageText, " ")}`);
+    const outputs = new Map<string, string>();
+    for (const file of parsed.fileNames) {
+      try {
+        for (const output of ts.getOutputFileNames(parsed, file, false)) outputs.set(normalize(output), normalize(file));
+      } catch { /* Files outside a project's emit set have no output mapping. */ }
+    }
+    projects.push({ configPath: canonical, options: parsed.options, files: new Set(parsed.fileNames.map(normalize)), outputs });
+    for (const reference of parsed.projectReferences ?? []) await visit(reference.path);
+  };
+  await visit(configPath);
+  return projects;
+}
+
+function resolveImport(root: string, sourcePath: string, specifier: string, language: "javascript" | "python", files: Map<string, GraphNode>, projects: TypeScriptProject[], workspaces: Map<string, PackageManifest>): { path?: string; external?: boolean; reason?: UnresolvedImport["reason"] } {
   if (language === "python") {
     const path = resolvePythonImport(sourcePath, specifier, files);
     if (path) return { path };
@@ -120,10 +146,15 @@ function resolveImport(root: string, sourcePath: string, specifier: string, lang
     const direct = resolveCandidates(normalizeRel(join(dirname(sourcePath), specifier)), files);
     if (direct) return { path: direct };
   }
-  const result = ts.resolveModuleName(specifier, join(root, sourcePath), options, ts.sys).resolvedModule;
+  const absoluteSource = normalize(join(root, sourcePath));
+  const project = projects.find((item) => item.files.has(absoluteSource));
+  const options = project?.options ?? projects[0]?.options ?? { moduleResolution: ts.ModuleResolutionKind.NodeNext, module: ts.ModuleKind.NodeNext };
+  const outputSources = new Map(projects.flatMap((item) => [...item.outputs.entries()]));
+  const result = ts.resolveModuleName(specifier, absoluteSource, options, ts.sys).resolvedModule;
   if (result && !result.isExternalLibraryImport) {
     if (!insideRoot(root, result.resolvedFileName)) return { reason: "outside-scan" };
-    const rel = normalizeRel(relative(root, result.resolvedFileName));
+    const source = outputSources.get(normalize(result.resolvedFileName)) ?? result.resolvedFileName;
+    const rel = normalizeRel(relative(root, source));
     const matched = resolveCandidates(rel, files);
     return matched ? { path: matched } : { reason: "outside-scan" };
   }
@@ -132,19 +163,21 @@ function resolveImport(root: string, sourcePath: string, specifier: string, lang
   if (workspace) {
     const subpath = specifier.slice(packageName.length).replace(/^\//, "");
     const base = subpath ? join(workspace.dir, subpath) : join(workspace.dir, workspace.entry ?? "src/index.ts");
-    const matched = resolveCandidates(normalizeRel(relative(root, base)), files);
+    const source = outputSources.get(normalize(base)) ?? base;
+    const matched = resolveCandidates(normalizeRel(relative(root, source)), files);
     return matched ? { path: matched } : { reason: "outside-scan" };
   }
   return { reason: "not-found" };
 }
 
 export async function buildMindGraph(root: string, config: ProjectConfig): Promise<MindGraph> {
-  const parsed = await parseProject(root, config.scanner.extensions, config.scanner.exclude, config.scanner.include);
-  const manifests = await findPackageManifests(root);
+  const graphRoot = await realpath(resolve(root));
+  const parsed = await parseProject(graphRoot, config.scanner.extensions, config.scanner.exclude, config.scanner.include);
+  const manifests = await findPackageManifests(graphRoot);
   const workspaceByName = new Map(manifests.filter((item): item is PackageManifest & { name: string } => Boolean(item.name)).map((item) => [item.name, item]));
   const dependencyNames = [...new Set(manifests.flatMap((item) => item.dependencies))].filter((name) => !workspaceByName.has(name)).sort();
   const packages = dependencyNames.map((name) => ({ id: stableId("pkg", name), type: "PACKAGE" as const, name }));
-  const options = await compilerOptions(root);
+  const projects = await compilerProjects(graphRoot);
   const nodes = [...parsed.files, ...parsed.symbols, ...packages];
   const edges: GraphEdge[] = [];
   const unresolvedImports: UnresolvedImport[] = [];
@@ -166,7 +199,7 @@ export async function buildMindGraph(root: string, config: ProjectConfig): Promi
   for (const item of parsed.imports) {
     const from = fileByPath.get(item.sourcePath);
     if (!from) continue;
-    const target = resolveImport(resolve(root), item.sourcePath, item.specifier, item.language, fileByPath, options, workspaceByName);
+    const target = resolveImport(graphRoot, item.sourcePath, item.specifier, item.language, fileByPath, projects, workspaceByName);
     if (target.path) {
       const to = fileByPath.get(target.path);
       if (!to) continue;
