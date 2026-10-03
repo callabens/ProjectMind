@@ -15,9 +15,12 @@ try {
   execFileSync(process.execPath, ['--input-type=module', '--eval', `
     import { PROVIDER_API_VERSION, resolveProviderCommands } from ${JSON.stringify(packageName + '/provider-sdk')};
     import { gitDiffCheckProvider } from ${JSON.stringify(packageName + '/provider-examples/git-diff-check')};
+    import { eslintCheckProvider } from ${JSON.stringify(packageName + '/provider-examples/eslint-check')};
     if (PROVIDER_API_VERSION !== 'projectmind.provider/v1') throw new Error('Wrong provider API version');
     const commands = await resolveProviderCommands(gitDiffCheckProvider, { root: process.cwd(), project: { name: 'smoke', root: '.' } });
     if (commands[0]?.command !== 'git diff --check') throw new Error('Packaged provider example failed');
+    const eslintCommands = await resolveProviderCommands(eslintCheckProvider, { root: process.cwd(), project: { name: 'smoke', root: '.' } });
+    if (eslintCommands[0]?.command !== 'npx --no-install eslint .') throw new Error('Packaged ESLint provider example failed');
   `], { cwd: pkgRoot, stdio: 'inherit' });
   const target = join(root, 'consumer');
   mkdirSync(target);
