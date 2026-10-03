@@ -9,16 +9,16 @@ Search results and an unclaimed-looking registry page are not proof of ownership
 Run the local gate with that exact name:
 
 ```bash
-pnpm release:check --name @scope/projectmind
+pnpm release:check --name @callabens/projectmind
 ```
 
 The first public artifact may be a reviewed development preview on the non-default `next` tag:
 
 ```bash
-pnpm release:check --channel preview --name projectmind
+pnpm release:check --channel preview --name @callabens/projectmind
 ```
 
-Preview versions must use `x.y.z-dev.N`; they never satisfy the stable release gate and must not receive the `latest` tag.
+Preview versions must use `x.y.z-dev.N`; they never satisfy the stable release gate and must be intentionally published with the `next` tag. npm may also assign `latest` to the first version of a new package; the first stable release must move `latest` to the reviewed stable version.
 
 The stable command intentionally exits with status 2 for a development version or when public/provenance settings differ from policy. `--json` emits a machine-readable blocker report.
 
