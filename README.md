@@ -1,6 +1,6 @@
 # ProjectMind
 
-[![CI](https://github.com/CayraAgent/ProjectMind/actions/workflows/ci.yml/badge.svg)](https://github.com/CayraAgent/ProjectMind/actions/workflows/ci.yml)
+[![CI](https://github.com/callabens/ProjectMind/actions/workflows/ci.yml/badge.svg)](https://github.com/callabens/ProjectMind/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 
 **Your agent writes code. ProjectMind checks the evidence.**
