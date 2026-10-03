@@ -28,6 +28,45 @@ test("Python AST scanner records functions, classes, tests, and local imports", 
   assert.ok(graph.unresolvedImports.some((item) => item.specifier === "definitely_missing_projectmind"));
 });
 
+test("Python graph resolves relative and namespace imports within scan boundaries", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "pm-python-imports-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(join(root, "src", "acme", "api"), { recursive: true });
+  await mkdir(join(root, "src", "acme", "shared"), { recursive: true });
+  await mkdir(join(root, "src", "namespace", "tools"), { recursive: true });
+  await writeFile(join(root, "src", "acme", "__init__.py"), "");
+  await writeFile(join(root, "src", "acme", "api", "__init__.py"), "");
+  await writeFile(join(root, "src", "acme", "api", "local.py"), "local = True\n");
+  await writeFile(join(root, "src", "acme", "shared", "helpers.py"), "shared = True\n");
+  await writeFile(join(root, "src", "namespace", "tools", "helper.py"), "namespace = True\n");
+  await writeFile(join(root, "outside.py"), "outside = True\n");
+  await writeFile(join(root, "src", "acme", "api", "service.py"), [
+    "from .local import local",
+    "from ..shared.helpers import shared",
+    "from src.namespace.tools.helper import namespace",
+    "from ....escape import invalid",
+    "import outside",
+    "import json",
+    "import definitely_missing_projectmind_namespace",
+  ].join("\n"));
+  const config = { version: 1 as const, project: { name: "python-imports", root: "." }, scanner: { include: ["src"], extensions: [".py"], exclude: [] }, verification: { commands: [] } };
+  const graph = await buildMindGraph(root, config);
+  const pathById = new Map(graph.nodes.map((node) => [node.id, node.path]));
+  const imports = graph.edges.filter((edge) => edge.type === "IMPORTS").map((edge) => [pathById.get(edge.from), pathById.get(edge.to), edge.metadata?.specifier]);
+  for (const [target, specifier] of [
+    ["src/acme/api/local.py", ".local"],
+    ["src/acme/shared/helpers.py", "..shared.helpers"],
+    ["src/namespace/tools/helper.py", "src.namespace.tools.helper"],
+  ]) assert.ok(imports.some(([from, to, value]) => from === "src/acme/api/service.py" && to === target && value === specifier));
+  assert.ok(!graph.unresolvedImports.some((item) => item.specifier === "json"));
+  assert.deepEqual(graph.unresolvedImports, [
+    { sourcePath: "src/acme/api/service.py", specifier: "....escape", reason: "outside-scan" },
+    { sourcePath: "src/acme/api/service.py", specifier: "definitely_missing_projectmind_namespace", reason: "not-found" },
+    { sourcePath: "src/acme/api/service.py", specifier: "outside", reason: "outside-scan" },
+  ]);
+  assert.deepEqual(graph.unresolvedImports, (await buildMindGraph(root, config)).unresolvedImports);
+});
+
 test("Python project initialization configures structured pytest evidence", async (t) => {
   const root = await mkdtemp(join(tmpdir(), "pm-python-init-"));
   t.after(() => rm(root, { recursive: true, force: true }));
