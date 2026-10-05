@@ -6,7 +6,7 @@ import { createIntent, bindRequirement } from "../../../packages/intent/src/inde
 import { summarizeChanges } from "../../../packages/git/src/index.ts";
 import { verifyProject } from "../../../packages/verifier/src/project.ts";
 import { formatChanges, formatInit, formatIntent, formatVerification } from "../../../packages/report/src/index.ts";
-import { runMcpServer } from "../../../packages/mcp/src/index.ts";
+import { runMcpHttpServer, runMcpServer } from "../../../packages/mcp/src/index.ts";
 import { recordMemory, searchMemory, type MemoryType } from "../../../packages/memory/src/index.ts";
 import { getClaimReport, recordClaim } from "../../../packages/claims/src/index.ts";
 import { PROJECTMIND_VERSION } from "../../../packages/core/src/index.ts";
@@ -43,7 +43,7 @@ function optionValues(args: ParsedArgs, key: string): string[] {
 }
 
 function help(): string {
-  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  scan\n  changes\n  intent create <title> [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--intent <id>]\n  verify [intent-id] [--base <git-ref>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n`;
+  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  scan\n  changes\n  intent create <title> [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--intent <id>]\n  verify [intent-id] [--base <git-ref>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
 }
 
 async function main(): Promise<void> {
@@ -182,6 +182,28 @@ async function main(): Promise<void> {
     }
     const mcpRoot = process.env.CLAUDE_PROJECT_DIR ? resolve(process.env.CLAUDE_PROJECT_DIR) : root;
     await runMcpServer(mcpRoot, { allowExecution: process.env.PROJECTMIND_ALLOW_EXECUTION === "1" });
+    return;
+  }
+
+  if (command === "mcp-http") {
+    if (process.env.CLAUDE_PROJECT_DIR && !isAbsolute(process.env.CLAUDE_PROJECT_DIR)) {
+      throw new Error("CLAUDE_PROJECT_DIR must be an absolute path.");
+    }
+    const mcpRoot = process.env.CLAUDE_PROJECT_DIR ? resolve(process.env.CLAUDE_PROJECT_DIR) : root;
+    const rawPort = optionValues(args, "port")[0] ?? process.env.PORT ?? "3000";
+    const port = Number(rawPort);
+    if (!Number.isInteger(port) || port < 0 || port > 65_535) throw new Error("MCP HTTP port must be an integer from 0 to 65535.");
+    const host = optionValues(args, "host")[0] ?? process.env.HOST ?? "127.0.0.1";
+    const server = await runMcpHttpServer(mcpRoot, {
+      host,
+      port,
+      ...(process.env.PROJECTMIND_MCP_TOKEN ? { authToken: process.env.PROJECTMIND_MCP_TOKEN } : {}),
+      allowExecution: process.env.PROJECTMIND_ALLOW_EXECUTION === "1",
+      allowMutations: process.env.PROJECTMIND_ALLOW_MUTATIONS === "1",
+    });
+    const address = server.address();
+    const boundPort = typeof address === "object" && address ? address.port : port;
+    console.log(`ProjectMind MCP HTTP listening at http://${host}:${boundPort}/mcp`);
     return;
   }
 
