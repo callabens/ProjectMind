@@ -12,7 +12,7 @@ The deterministic core is model-independent. No LLM decides a verdict.
 | `evidence` | Fresh command execution, bounded output, timeouts, one run id, Node and pytest JUnit parsing |
 | `verifier` | Pure declared-check verdict; orchestration rescans and rejects repository drift |
 | `proofpack` | Runtime-validated JSON artifacts with intent, changes, evidence, scope and verdict |
-| `mcp` | Official SDK stdio transport, validated tool arguments, operator-controlled execution |
+| `mcp` | Official SDK stdio and Streamable HTTP transports, validated tool arguments, operator-controlled execution and mutations |
 | `report` / CLI | Human-readable output and exit codes |
 | `memory` | Local decision/constraint/incident records with deterministic lexical retrieval; never evidence |
 | `claims` | UNPROVEN declarations and historical link-strength reports; never verdict inputs |
