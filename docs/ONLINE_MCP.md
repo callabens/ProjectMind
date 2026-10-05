@@ -17,7 +17,7 @@ The endpoints are:
 
 Put the service behind HTTPS, then enter `https://your-host.example/mcp` as the custom connector URL. Public servers are read-only by default: verification execution, memory writes, and claim writes remain blocked.
 
-This repository also includes a Vercel function and `vercel.json`. Import the GitHub repository into Vercel with the repository root as the project root; the resulting deployment exposes `/mcp` and `/health` without requiring a separate web framework.
+This repository also includes a Vercel function, `vercel.json`, and a minimal `public` status page. Import the GitHub repository into Vercel with the repository root as the project root; the resulting deployment exposes `/mcp` and `/health` without requiring a separate web framework.
 
 ## Private writable server
 
