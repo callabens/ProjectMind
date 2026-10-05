@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/mcp", "destination": "/api/mcp" },
+    { "source": "/health", "destination": "/api/mcp" }
+  ],
+  "functions": {
+    "api/mcp.ts": {
+      "includeFiles": "{.projectmind,apps,docs,packages,scripts,schemas,tests}/**"
+    }
+  }
+}
