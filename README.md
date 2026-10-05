@@ -23,7 +23,7 @@ Implemented:
 - explicit requirement-to-command-and-test evidence bindings
 - fresh, single-run evidence tied to Git HEAD and repository content
 - timeouts, bounded logs, fail-closed verification and JSON ProofPacks
-- official MCP SDK stdio server, with command execution disabled by default
+- official MCP SDK stdio and Streamable HTTP servers, with remote execution and mutations disabled by default
 - reusable generic MCP compatibility pilot and tested Claude Code project configuration
 - GitHub Action with an explicit trust gate, check result, summary and artifact
 - self-hosted repository pilot: ProjectMind verifies its own reviewed trust-boundary intent in CI
@@ -80,12 +80,13 @@ Free-form claims can carry explicit evidence, intent, and requirement links. `pr
 ## MCP and CI
 
 - [Claude Code setup](integrations/claude-code/README.md)
+- [Online MCP / Claude custom connector](docs/ONLINE_MCP.md)
 - [Generic MCP setup](integrations/generic-mcp/README.md)
 - [GitHub Action setup](integrations/github-action/README.md)
 - [Provider SDK v1](docs/PROVIDERS.md)
 - [Engineering Memory Lite](docs/MEMORY.md)
 
-The MCP server exposes `projectmind_request_verification`, never a status-setting tool. Execution requires an operator to enable `PROJECTMIND_ALLOW_EXECUTION=1` at server startup.
+The MCP server exposes `projectmind_request_verification`, never a status-setting tool. Execution requires an operator to enable `PROJECTMIND_ALLOW_EXECUTION=1` at server startup. The HTTP transport is read-only by default and requires a bearer token before remote execution or repository mutations can be enabled.
 
 ## Self-hosted pilot
 

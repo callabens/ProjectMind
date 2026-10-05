@@ -7,8 +7,10 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { initializeProject } from "../packages/core/src/project.ts";
 import { createIntent } from "../packages/intent/src/index.ts";
+import { createMcpHttpServer } from "../packages/mcp/src/index.ts";
 
 const exec = promisify(execFile);
 const cli = resolve("apps/cli/src/index.ts");
@@ -78,4 +80,38 @@ test("Claude Code project MCP example is explicit stdio with execution disabled"
       },
     },
   });
+});
+
+test("Streamable HTTP MCP supports authenticated remote clients", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "pm-http-mcp-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(join(root, "src"));
+  await writeFile(join(root, "package.json"), JSON.stringify({ name: "http-mcp-pilot", type: "module" }));
+  await writeFile(join(root, "src", "index.ts"), "export const value = 1;\n");
+  await initializeProject(root);
+  await createIntent(root, "HTTP MCP compatibility", ["Remote context is readable"], [], []);
+
+  const httpServer = createMcpHttpServer(root, { authToken: "test-secret", allowMutations: false });
+  await new Promise<void>((resolve) => httpServer.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise<void>((resolve, reject) => httpServer.close((error) => error ? reject(error) : resolve())));
+  const address = httpServer.address();
+  assert.ok(address && typeof address === "object");
+  const base = `http://127.0.0.1:${address.port}`;
+  assert.equal((await fetch(`${base}/health`)).status, 200);
+  assert.equal((await fetch(`${base}/mcp`, { method: "POST" })).status, 401);
+
+  const client = new Client({ name: "http-mcp-pilot", version: "1.0.0" });
+  const transport = new StreamableHTTPClientTransport(new URL(`${base}/mcp`), {
+    requestInit: { headers: { authorization: "Bearer test-secret" } },
+  });
+  t.after(() => client.close());
+  await client.connect(transport as unknown as Parameters<Client["connect"]>[0]);
+  const { tools } = await client.listTools();
+  assert.ok(tools.some((item) => item.name === "projectmind_get_project_context"));
+  const context = await client.callTool({ name: "projectmind_get_project_context", arguments: {} });
+  assert.match(JSON.stringify(context.content), /http-mcp-pilot/);
+  const blocked = await client.callTool({ name: "projectmind_request_verification", arguments: {} });
+  assert.equal(blocked.isError, true);
+  const mutation = await client.callTool({ name: "projectmind_record_decision", arguments: { text: "must not persist" } });
+  assert.equal(mutation.isError, true);
 });
