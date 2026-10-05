@@ -47,7 +47,16 @@ export function createMcpServer(root: string, options: McpOptions = {}): McpServ
   }, async () => content(await summarizeChanges(root, await buildMindGraph(root, await loadConfig(root)))));
   server.registerTool("projectmind_get_evidence", {
     description: "Read the last ProofPack as historical data; this never updates its verdict.", inputSchema: {},
-  }, async () => content(await readJson(join(projectMindDir(root), "latest-proof.json"))));
+  }, async () => {
+    try {
+      return content(await readJson(join(projectMindDir(root), "latest-proof.json")));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        return content({ status: "NOT_AVAILABLE", reason: "No historical ProofPack has been generated in this environment." });
+      }
+      throw error;
+    }
+  });
   server.registerTool("projectmind_get_claim_report", {
     description: "Report historical claim-to-evidence link strength. This never proves claim text or updates a verdict.", inputSchema: {},
   }, async () => content(await getClaimReport(root)));

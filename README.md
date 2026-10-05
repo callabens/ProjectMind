@@ -94,6 +94,8 @@ This repository checks in its reviewed [ProjectMind configuration](.projectmind/
 
 The released npm preview was also exercised against a pinned revision of the independent public `broofa/airjs` repository. The [sanitized pilot record](docs/pilots/AIRJS.md) documents initialization, an honest unbound `NOT_VERIFIED` result, the explicit testcase binding, the resulting `VERIFIED` ProofPack lineage, and the product gap found during the run.
 
+The hosted read-only transport was exercised through a real Claude Web custom connector session. The [sanitized Claude Web pilot](docs/pilots/CLAUDE_WEB.md) records tool discovery, safe reads, blocked execution and the absence of a fabricated verdict.
+
 ## Principles
 
 Local first · Model agnostic · Deterministic core · AI optional · Evidence > claims · No self-verification API · Git native · Open formats · Extensible · Secure by default
