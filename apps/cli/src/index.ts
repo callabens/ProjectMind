@@ -2,7 +2,7 @@
 import { isAbsolute, resolve } from "node:path";
 import { initializeProject, loadConfig } from "../../../packages/core/src/project.ts";
 import { buildMindGraph, persistMindGraph } from "../../../packages/graph/src/index.ts";
-import { createIntent, bindRequirement } from "../../../packages/intent/src/index.ts";
+import { createIntent, bindRequirement, suggestRequirementBindings } from "../../../packages/intent/src/index.ts";
 import { summarizeChanges } from "../../../packages/git/src/index.ts";
 import { verifyProject } from "../../../packages/verifier/src/project.ts";
 import { formatChanges, formatInit, formatIntent, formatVerification } from "../../../packages/report/src/index.ts";
@@ -43,7 +43,7 @@ function optionValues(args: ParsedArgs, key: string): string[] {
 }
 
 function help(): string {
-  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  scan\n  changes\n  intent create <title> [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--intent <id>]\n  verify [intent-id] [--base <git-ref>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
+  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  scan\n  changes\n  intent create <title> [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
 }
 
 async function main(): Promise<void> {
@@ -106,6 +106,17 @@ async function main(): Promise<void> {
       optionValues(args, "test"),
     );
     console.log(formatIntent(intent, `Requirement ${requirementId} bound in intent ${intent.id}`));
+    return;
+  }
+
+  if (command === "intent" && subcommand === "suggest") {
+    const report = await suggestRequirementBindings(root, rest[0], optionValues(args, "intent")[0]);
+    if (args.options.has("json")) console.log(JSON.stringify(report, null, 2));
+    else console.log(report.suggestions.length ? [
+      `Binding suggestions for ${report.intentId} (heuristic; not evidence)`,
+      ...report.suggestions.map((item) => `${item.requirementId}  score=${item.score}  ${item.testName}\n  ${item.command}\n  ${item.testPath}\n  ${item.reasons.map((reason) => `${reason.kind}:${reason.value}`).join(", ")}`),
+      ...report.diagnostics.map((item) => `Note: ${item}`),
+    ].join("\n") : `No binding suggestions for ${report.intentId}.\n${report.diagnostics.join("\n")}`);
     return;
   }
 
