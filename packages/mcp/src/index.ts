@@ -110,11 +110,10 @@ function authorized(request: IncomingMessage, token?: string): boolean {
   return !token || request.headers.authorization === `Bearer ${token}`;
 }
 
-export function createMcpHttpServer(root: string, options: McpHttpOptions = {}): Server {
-  const server = createServer(async (request, response) => {
-    try {
+export async function handleMcpHttpRequest(root: string, options: McpHttpOptions, request: IncomingMessage, response: ServerResponse): Promise<void> {
+  try {
       const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
-      if (request.method === "GET" && url.pathname === "/health") {
+      if (request.method === "GET" && ["/health", "/mcp"].includes(url.pathname)) {
         response.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
         response.end(JSON.stringify({ status: "ok", service: "projectmind-mcp", version: PROJECTMIND_VERSION }));
         return;
@@ -140,10 +139,15 @@ export function createMcpHttpServer(root: string, options: McpHttpOptions = {}):
       const transport = new StreamableHTTPServerTransport({ enableJsonResponse: true });
       await createMcpServer(root, options).connect(transport as unknown as Parameters<McpServer["connect"]>[0]);
       await transport.handleRequest(request, response);
-    } catch (error) {
+  } catch (error) {
       if (!response.headersSent) jsonError(response, 500, "Internal server error");
       console.error(`ProjectMind HTTP MCP error: ${error instanceof Error ? error.message : String(error)}`);
-    }
+  }
+}
+
+export function createMcpHttpServer(root: string, options: McpHttpOptions = {}): Server {
+  const server = createServer(async (request, response) => {
+    await handleMcpHttpRequest(root, options, request, response);
   });
   return server;
 }
