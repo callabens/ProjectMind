@@ -22,6 +22,7 @@ test("Python AST scanner records functions, classes, tests, and local imports", 
   assert.ok(parsed.symbols.some((item) => item.name === "run" && item.type === "FUNCTION"));
   const graph = await buildMindGraph(root, { version: 1, project: { name: "python-fixture", root: "." }, scanner: { include: ["."], extensions: [".py"], exclude: [] }, verification: { commands: [] } });
   assert.equal(graph.parser, "typescript-ast-5.9+python-ast-3");
+  assert.deepEqual(graph.nodes.find((item) => item.path === "tests/test_service.py")?.metadata?.testNames, ["test_service"]);
   assert.ok(graph.edges.some((edge) => edge.type === "IMPORTS" && edge.metadata?.specifier === ".utils"));
   assert.ok(graph.edges.some((edge) => edge.type === "IMPORTS" && edge.metadata?.specifier === "src.app.service"));
   assert.ok(!graph.unresolvedImports.some((item) => item.specifier === "os"));
