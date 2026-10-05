@@ -110,6 +110,8 @@ test("Streamable HTTP MCP supports authenticated remote clients", async (t) => {
   assert.ok(tools.some((item) => item.name === "projectmind_get_project_context"));
   const context = await client.callTool({ name: "projectmind_get_project_context", arguments: {} });
   assert.match(JSON.stringify(context.content), /http-mcp-pilot/);
+  const evidence = await client.callTool({ name: "projectmind_get_evidence", arguments: {} });
+  assert.match(JSON.stringify(evidence.content), /NOT_AVAILABLE/);
   const blocked = await client.callTool({ name: "projectmind_request_verification", arguments: {} });
   assert.equal(blocked.isError, true);
   const mutation = await client.callTool({ name: "projectmind_record_decision", arguments: { text: "must not persist" } });
