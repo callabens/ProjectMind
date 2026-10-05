@@ -6,7 +6,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { join } from "node:path";
 import { loadConfig } from "../../core/src/project.ts";
 import { PROJECTMIND_VERSION, projectMindDir, readJson } from "../../core/src/index.ts";
-import { loadIntent } from "../../intent/src/index.ts";
+import { loadIntent, suggestRequirementBindings } from "../../intent/src/index.ts";
 import { summarizeChanges } from "../../git/src/index.ts";
 import { buildMindGraph } from "../../graph/src/index.ts";
 import { verifyProject } from "../../verifier/src/project.ts";
@@ -43,6 +43,11 @@ export function createMcpServer(root: string, options: McpOptions = {}): McpServ
     const intent = await loadIntent(root);
     return content({ preserve: intent.preserve, outOfScope: intent.outOfScope });
   });
+  server.registerTool("projectmind_suggest_bindings", {
+    description: "Suggest deterministic heuristic requirement-to-test bindings without mutating intent or producing evidence.",
+    inputSchema: { requirementId: z.string().regex(/^REQ-\d+$/).optional(), intentId: z.string().regex(/^PM-\d{4,}$/).optional() },
+    annotations: readOnlyAnnotations,
+  }, async ({ requirementId, intentId }) => content(await suggestRequirementBindings(root, requirementId, intentId)));
   server.registerTool("projectmind_get_changed_symbols", {
     description: "Return file-level working-tree impact with a fresh graph; no commands are executed.", inputSchema: {}, annotations: readOnlyAnnotations,
   }, async () => content(await summarizeChanges(root, await buildMindGraph(root, await loadConfig(root)))));
