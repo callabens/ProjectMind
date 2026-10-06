@@ -7,7 +7,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { initializeProject, loadConfig } from "../packages/core/src/project.ts";
 import { buildMindGraph, persistMindGraph } from "../packages/graph/src/index.ts";
-import { createIntent, bindRequirement, loadIntent } from "../packages/intent/src/index.ts";
+import { createIntent, bindRequirement, loadIntent, suggestRequirementBindings } from "../packages/intent/src/index.ts";
 import { collectVerificationEvidence } from "../packages/evidence/src/index.ts";
 import { verifyIntent } from "../packages/verifier/src/index.ts";
 import { summarizeChanges, repositoryState } from "../packages/git/src/index.ts";
@@ -114,4 +114,26 @@ test("CLI reports requirement binding as an update", async () => {
   const { stdout } = await execFileAsync(process.execPath, ["--experimental-strip-types", cli, "intent", "bind", "REQ-1", "--command", config.verification.commands[0]!.command, "--test", "login"], { cwd: root });
   assert.match(stdout, /Requirement REQ-1 bound in intent PM-0001/);
   assert.doesNotMatch(stdout, /Intent PM-0001 created/);
+});
+
+test("binding suggestions are deterministic, heuristic, and never mutate intent", async () => {
+  const root = await fixture();
+  await initializeProject(root);
+  const intent = await createIntent(root, "Keep authentication working", ["Login remains functional", "Billing remains functional"], [], []);
+  const before = JSON.stringify(await loadIntent(root));
+  const first = await suggestRequirementBindings(root);
+  const second = await suggestRequirementBindings(root);
+
+  assert.deepEqual(first, second);
+  assert.equal(first.status, "SUGGESTIONS");
+  assert.deepEqual(first.suggestions.map((item) => item.requirementId), ["REQ-1"]);
+  assert.equal(first.suggestions[0]?.testName, "login");
+  assert.equal(first.suggestions[0]?.confidence, "heuristic");
+  assert.ok(first.suggestions[0]?.reasons.some((item) => item.kind === "requirement-token" && item.value === "login"));
+  assert.ok(first.diagnostics.includes("REQ-2 has no deterministic candidate."));
+  assert.equal(JSON.stringify(await loadIntent(root, intent.id)), before);
+
+  const { stdout } = await execFileAsync(process.execPath, ["--experimental-strip-types", cli, "intent", "suggest", "REQ-1", "--json"], { cwd: root });
+  const cliReport = JSON.parse(stdout) as { suggestions: Array<{ testName: string }> };
+  assert.equal(cliReport.suggestions[0]?.testName, "login");
 });

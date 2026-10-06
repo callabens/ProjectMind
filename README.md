@@ -21,6 +21,7 @@ Implemented:
 - conservative file-level change and reverse-import impact analysis
 - deterministic Project Constitution enforcement for dependency boundaries and sensitive paths
 - explicit requirement-to-command-and-test evidence bindings
+- deterministic read-only binding suggestions with explicit heuristic reasons
 - fresh, single-run evidence tied to Git HEAD and repository content
 - timeouts, bounded logs, fail-closed verification and JSON ProofPacks
 - official MCP SDK stdio and Streamable HTTP servers, with remote execution and mutations disabled by default
