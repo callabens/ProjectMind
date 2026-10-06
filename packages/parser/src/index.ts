@@ -6,7 +6,7 @@ import { stableId, type GraphNode } from "../../core/src/index.ts";
 
 export interface ParsedImport { sourcePath: string; specifier: string; language: "javascript" | "python"; }
 export interface ParsedSource { files: GraphNode[]; symbols: GraphNode[]; imports: ParsedImport[]; }
-export type ParsedSourceContent = Pick<ParsedSource, "symbols" | "imports">;
+export type ParsedSourceContent = Pick<ParsedSource, "symbols" | "imports"> & { testNames: string[] };
 const ignoredDirectories = new Set([".git", ".projectmind", "node_modules", "dist", "build", "coverage", ".next", ".venv", "venv", "__pycache__", ".pytest_cache"]);
 
 async function walk(root: string, dir: string, extensions: Set<string>, exclude: Set<string>): Promise<string[]> {
@@ -25,7 +25,7 @@ async function walk(root: string, dir: string, extensions: Set<string>, exclude:
 }
 
 function parsePythonSource(path: string, rel: string, source: string): ParsedSourceContent {
-  const script = `import ast,json,sys\ns=ast.parse(sys.stdin.read(), filename=sys.argv[1])\nout={"symbols":[],"imports":[]}\nfor n in ast.walk(s):\n if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef)): out["symbols"].append({"name":n.name,"type":"FUNCTION","line":n.lineno,"column":n.col_offset})\n elif isinstance(n,ast.ClassDef): out["symbols"].append({"name":n.name,"type":"CLASS","line":n.lineno,"column":n.col_offset})\n elif isinstance(n,ast.Import):\n  for a in n.names: out["imports"].append(a.name)\n elif isinstance(n,ast.ImportFrom):\n  prefix=("."*n.level)+(n.module or "")\n  if n.module: out["imports"].append(prefix)\n  else:\n   for a in n.names: out["imports"].append(prefix+a.name)\nprint(json.dumps(out,separators=(",",":")))`;
+  const script = `import ast,json,sys\ns=ast.parse(sys.stdin.read(), filename=sys.argv[1])\nout={"symbols":[],"imports":[],"testNames":[]}\nfor n in ast.walk(s):\n if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef)):\n  out["symbols"].append({"name":n.name,"type":"FUNCTION","line":n.lineno,"column":n.col_offset})\n  if n.name.startswith("test_"): out["testNames"].append(n.name)\n elif isinstance(n,ast.ClassDef): out["symbols"].append({"name":n.name,"type":"CLASS","line":n.lineno,"column":n.col_offset})\n elif isinstance(n,ast.Import):\n  for a in n.names: out["imports"].append(a.name)\n elif isinstance(n,ast.ImportFrom):\n  prefix=("."*n.level)+(n.module or "")\n  if n.module: out["imports"].append(prefix)\n  else:\n   for a in n.names: out["imports"].append(prefix+a.name)\nprint(json.dumps(out,separators=(",",":")))`;
   const commands: string[][] = process.platform === "win32" ? [["py", "-3"], ["python"]] : [["python3"], ["python"]];
   let result: SpawnSyncReturns<string> | undefined;
   for (const attempt of commands) {
@@ -36,10 +36,11 @@ function parsePythonSource(path: string, rel: string, source: string): ParsedSou
   }
   if (!result || result.error) throw new Error(`Cannot parse ${rel}: Python 3 is required.`);
   if (result.status !== 0) throw new Error(`Cannot parse ${rel}: ${result.stderr.trim() || "invalid Python syntax"}`);
-  const parsed = JSON.parse(result.stdout) as { symbols: Array<{ name: string; type: "FUNCTION" | "CLASS"; line: number; column: number }>; imports: string[] };
+  const parsed = JSON.parse(result.stdout) as { symbols: Array<{ name: string; type: "FUNCTION" | "CLASS"; line: number; column: number }>; imports: string[]; testNames: string[] };
   return {
     symbols: parsed.symbols.map((item) => ({ id: stableId("sym", `${rel}:${item.type}:${item.name}:${item.line}:${item.column}`), type: item.type, name: item.name, path: rel, line: item.line })),
     imports: parsed.imports.map((specifier) => ({ sourcePath: rel, specifier, language: "python" })),
+    testNames: [...new Set(parsed.testNames)].sort(),
   };
 }
 
@@ -47,6 +48,7 @@ export function parseSourceContent(path: string, rel: string, source: string): P
   if (extname(path) === ".py") return parsePythonSource(path, rel, source);
   const symbols: GraphNode[] = [];
   const imports: ParsedImport[] = [];
+  const testNames: string[] = [];
   const parsed = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true);
   // Declaration files intentionally produce no JavaScript. Asking transpileModule
   // to emit them throws "Debug Failure. Output generation failed" in TypeScript.
@@ -70,10 +72,18 @@ export function parseSourceContent(path: string, rel: string, source: string): P
     if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) addImport(node.moduleSpecifier);
     if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) addImport(node.moduleReference.expression);
     if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || ts.isIdentifier(node.expression) && node.expression.text === "require")) addImport(node.arguments[0]);
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression;
+      const base = ts.isIdentifier(callee) ? callee.text
+        : ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.expression) ? callee.expression.text
+          : undefined;
+      const name = node.arguments[0];
+      if ((base === "test" || base === "it") && name && ts.isStringLiteralLike(name)) testNames.push(name.text);
+    }
     ts.forEachChild(node, visit);
   };
   visit(parsed);
-  return { symbols, imports };
+  return { symbols, imports, testNames: [...new Set(testNames)].sort() };
 }
 
 export async function parseProject(root: string, extensions: string[], exclude: string[], include = ["."]): Promise<ParsedSource> {
@@ -90,8 +100,11 @@ export async function parseProject(root: string, extensions: string[], exclude: 
   for (const path of sourceFiles) {
     const rel = relative(resolvedRoot, path).replaceAll("\\", "/");
     const isTest = /(?:^|\/)(?:test|tests|__tests__)(?:\/|$)|\.(?:test|spec)\.[^.]+$|(?:^|\/)test_[^/]+\.py$|_test\.py$/.test(rel);
-    files.push({ id: stableId("file", rel), type: isTest ? "TEST" : "FILE", name: rel.split("/").at(-1) ?? rel, path: rel });
     const parsed = parseSourceContent(path, rel, await readFile(path, "utf8"));
+    files.push({
+      id: stableId("file", rel), type: isTest ? "TEST" : "FILE", name: rel.split("/").at(-1) ?? rel, path: rel,
+      ...(isTest && parsed.testNames.length ? { metadata: { testNames: parsed.testNames } } : {}),
+    });
     symbols.push(...parsed.symbols);
     imports.push(...parsed.imports);
   }
