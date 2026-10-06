@@ -4,9 +4,15 @@ export const evidenceKindSchema = z.enum(["test", "build", "typecheck", "lint", 
 export const evidenceProviderSchema = z.enum(["generic-command", "node-test-junit", "pytest-junit"]);
 export const intentIdSchema = z.string().regex(/^PM-\d{4,}$/, "Invalid intent id");
 const nonempty = z.string().trim().min(1);
+const repositoryRelativePathSchema = nonempty.refine((value) => value !== "." && !value.startsWith("./") && !value.startsWith("/")
+  && !value.endsWith("/") && !value.includes("//") && !value.includes("\\") && !value.split("/").includes(".."),
+"Paths must be normalized repository-relative paths");
+const coverageReportPathSchema = repositoryRelativePathSchema.refine((value) => value.startsWith(".projectmind/runtime/"),
+  "Coverage reports must be written under .projectmind/runtime");
 export const verificationCommandSchema = z.object({
   kind: evidenceKindSchema, command: nonempty, required: z.boolean(), timeoutMs: z.number().int().min(1).max(600_000).optional(),
   provider: evidenceProviderSchema.optional(),
+  coveragePath: coverageReportPathSchema.optional(),
 }).strict().superRefine((item, context) => {
   if ((item.provider === "node-test-junit" || item.provider === "pytest-junit") && item.kind !== "test") {
     context.addIssue({ code: z.ZodIssueCode.custom, message: "Structured JUnit providers are only valid for test evidence" });
@@ -19,8 +25,9 @@ export const configSchema = z.object({
   verification: z.object({ commands: z.array(verificationCommandSchema)
     .refine((items) => new Set(items.map((item) => item.command)).size === items.length, "Duplicate commands") }).strict(),
 }).strict();
-const pathPrefixSchema = nonempty.refine((value) => !value.startsWith("/") && !value.includes("\\")
-  && !value.split("/").includes("..") && !/[*?]/.test(value), "Path prefixes must be normalized repository-relative paths");
+const pathPrefixSchema = nonempty.refine((value) => value !== "." && !value.startsWith("./") && !value.startsWith("/")
+  && !value.endsWith("/") && !value.includes("//") && !value.includes("\\") && !value.split("/").includes("..")
+  && !/[*?]/.test(value), "Path prefixes must be normalized repository-relative paths");
 export const constitutionSchema = z.object({
   version: z.literal(1),
   dependencyRules: z.array(z.object({
@@ -38,6 +45,7 @@ export const requirementSchema = z.object({
   id: z.string().regex(/^REQ-\d+$/), statement: nonempty, critical: z.boolean(),
   evidenceKinds: z.array(evidenceKindSchema).min(1), evidenceCommands: z.array(nonempty).optional(),
   evidenceTests: z.array(nonempty).optional(),
+  coveragePaths: z.array(repositoryRelativePathSchema).optional(),
 }).strict();
 export const intentSchema = z.object({
   version: z.literal(1), id: intentIdSchema, title: nonempty, createdAt: z.string().datetime(),
@@ -67,6 +75,14 @@ const testSummarySchema = z.object({
     context.addIssue({ code: z.ZodIssueCode.custom, message: "Test summary counts are inconsistent" });
   }
 });
+const coverageSummarySchema = z.object({
+  provider: z.literal("lcov"),
+  files: z.array(z.object({
+    path: repositoryRelativePathSchema,
+    linesFound: z.number().int().nonnegative(),
+    linesHit: z.number().int().nonnegative(),
+  }).strict().refine((item) => item.linesHit <= item.linesFound, "Covered lines cannot exceed found lines")),
+}).strict();
 export const evidenceRecordSchema = z.object({
   version: z.literal(1),
   id: z.string().regex(/^ev_[a-f0-9]{24}$/),
@@ -85,6 +101,7 @@ export const evidenceRecordSchema = z.object({
   termination: z.enum(["timeout", "output-limit", "spawn-error"]).optional(),
   provider: evidenceProviderSchema.optional(),
   testSummary: testSummarySchema.optional(),
+  coverageSummary: coverageSummarySchema.optional(),
   evidenceError: nonempty.optional(),
 }).strict();
 export const claimRecordSchema = z.object({
