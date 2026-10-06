@@ -31,6 +31,8 @@ The Node and pytest providers parse JUnit XML, reject zero-test and all-skipped 
 
 `projectmind intent suggest [requirement-id]` reduces binding discovery work without weakening this rule. It scans literal Node `test`/`it` names and Python `test_*` functions, configured structured providers, requirement tokens, changed/affected files, and heuristic `TESTED_BY` edges. Results are deterministically ranked and include machine-readable reasons. A suggestion is not evidence, never changes the intent, and must still be accepted explicitly with `intent bind`.
 
+`projectmind doctor` is a read-only setup diagnostic. It reports invalid or missing configuration, absent required commands, unavailable structured test providers, missing active intents, unbound requirements, undeclared bound commands, and missing exact testcase names. `READY` describes configuration health only; it is not a verification verdict and does not inspect or refresh evidence.
+
 Python files are parsed with the installed Python 3 `ast` module. Local absolute and relative imports become graph edges; missing modules remain unresolved and therefore fail closed under applicable Constitution dependency rules. Python 3 is required when `.py` files are included in a scan.
 
 ## Refusal cases
