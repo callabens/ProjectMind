@@ -61,10 +61,11 @@ jobs:
       - name: Verify ProjectMind with ProjectMind
         run: pnpm projectmind verify
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: projectmind-self-proof-${{ github.sha }}
+          name: projectmind-self-proof
           path: .projectmind/latest-proof.json
-          if-no-files-found: error
+          if-no-files-found: warn
   platform:
     name: platform (${{ matrix.os }})
     needs: validate

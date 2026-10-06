@@ -28,6 +28,7 @@ Implemented:
 - official MCP SDK stdio and Streamable HTTP servers, with remote execution and mutations disabled by default
 - reusable generic MCP compatibility pilot and tested Claude Code project configuration
 - GitHub Action with an explicit trust gate, check result, summary and artifact
+- token-separated GitHub PR comments with a requirement-by-requirement status table
 - self-hosted repository pilot: ProjectMind verifies its own reviewed trust-boundary intent in CI
 - development packaging and CI on Node 22 / 24
 - deterministic local Engineering Memory retrieval for decisions, constraints and incidents

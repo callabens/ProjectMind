@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { isAbsolute, resolve } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
+import { readFile, writeFile } from "node:fs/promises";
 import { initializeProject, loadConfig } from "../../../packages/core/src/project.ts";
 import { buildMindGraph, persistMindGraph } from "../../../packages/graph/src/index.ts";
 import { createIntent, bindRequirement, suggestRequirementBindings } from "../../../packages/intent/src/index.ts";
@@ -11,6 +12,7 @@ import { recordMemory, searchMemory, type MemoryType } from "../../../packages/m
 import { getClaimReport, recordClaim } from "../../../packages/claims/src/index.ts";
 import { PROJECTMIND_VERSION } from "../../../packages/core/src/index.ts";
 import { diagnoseProject } from "../../../packages/doctor/src/index.ts";
+import { formatPullRequestComment } from "../../../packages/report/src/pr-comment.ts";
 
 interface ParsedArgs {
   positionals: string[];
@@ -44,7 +46,7 @@ function optionValues(args: ParsedArgs, key: string): string[] {
 }
 
 function help(): string {
-  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  doctor [--json]\n  scan\n  changes\n  intent create <title> [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
+  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  doctor [--json]\n  scan\n  changes\n  intent create <title> [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  report pr-comment [proof-path] [--output <path>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
 }
 
 async function main(): Promise<void> {
@@ -139,6 +141,15 @@ async function main(): Promise<void> {
     const { intent, evidence, result, proof } = await verifyProject(root, subcommand, optionValues(args, "base")[0]);
     console.log(`${formatVerification(intent, evidence, result)}\n\nProofPack: ${proof.id}`);
     if (result.status !== "VERIFIED") process.exitCode = 2;
+    return;
+  }
+
+  if (command === "report" && subcommand === "pr-comment") {
+    const proofPath = resolve(root, rest[0] ?? join(".projectmind", "latest-proof.json"));
+    const body = formatPullRequestComment(JSON.parse(await readFile(proofPath, "utf8")));
+    const output = optionValues(args, "output")[0];
+    if (output) await writeFile(resolve(root, output), `${body}\n`, "utf8");
+    else console.log(body);
     return;
   }
 
