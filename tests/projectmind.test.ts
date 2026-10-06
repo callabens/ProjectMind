@@ -12,6 +12,7 @@ import { collectVerificationEvidence } from "../packages/evidence/src/index.ts";
 import { verifyIntent } from "../packages/verifier/src/index.ts";
 import { summarizeChanges, repositoryState } from "../packages/git/src/index.ts";
 import { createProofPack } from "../packages/proofpack/src/index.ts";
+import { diagnoseProject } from "../packages/doctor/src/index.ts";
 
 const execFileAsync = promisify(execFile);
 const cli = resolve("apps/cli/src/index.ts");
@@ -136,4 +137,29 @@ test("binding suggestions are deterministic, heuristic, and never mutate intent"
   const { stdout } = await execFileAsync(process.execPath, ["--experimental-strip-types", cli, "intent", "suggest", "REQ-1", "--json"], { cwd: root });
   const cliReport = JSON.parse(stdout) as { suggestions: Array<{ testName: string }> };
   assert.equal(cliReport.suggestions[0]?.testName, "login");
+});
+
+test("doctor reports setup and binding gaps without producing a verdict", async () => {
+  const root = await mkdtemp(join(tmpdir(), "projectmind-doctor-"));
+  const missing = await diagnoseProject(root);
+  assert.equal(missing.status, "NEEDS_ATTENTION");
+  assert.deepEqual(missing.diagnostics.map((item) => item.code), ["NOT_INITIALIZED"]);
+
+  await writeFile(join(root, "package.json"), JSON.stringify({ name: "doctor-example", scripts: { test: "node --test tests/*.test.js" } }));
+  await initializeProject(root);
+  const intent = await createIntent(root, "Keep login working", ["Login succeeds"], [], []);
+  const before = JSON.stringify(await loadIntent(root, intent.id));
+  const report = await diagnoseProject(root);
+  assert.equal(report.status, "NEEDS_ATTENTION");
+  assert.equal(report.projectName, "doctor-example");
+  assert.ok(report.diagnostics.some((item) => item.code === "UNBOUND_REQUIREMENT"));
+  assert.ok(report.diagnostics.some((item) => item.code === "NO_SCOPE_DECLARATIONS"));
+  assert.equal(JSON.stringify(await loadIntent(root, intent.id)), before);
+  assert.ok(!("verdict" in report));
+
+  const config = await loadConfig(root);
+  await bindRequirement(root, "REQ-1", config.verification.commands[0]!.command, intent.id, ["login succeeds"]);
+  const ready = await diagnoseProject(root);
+  assert.equal(ready.status, "READY");
+  assert.ok(!ready.diagnostics.some((item) => item.severity === "error"));
 });
