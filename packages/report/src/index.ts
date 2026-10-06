@@ -61,7 +61,10 @@ export function formatVerification(intent: IntentContract, evidence: EvidenceRec
     const suffix = item.testSummary
       ? ` (${item.testSummary.passed}/${item.testSummary.discovered} passed, ${item.testSummary.skipped} skipped)`
       : item.evidenceError ? ` (${item.evidenceError})` : "";
-    lines.push(`${mark(item.exitCode === 0 && !item.evidenceError && structuredPass)} ${item.kind.padEnd(10)} ${item.command ?? "recorded evidence"}${suffix}`);
+    const coverage = item.coverageSummary
+      ? ` (coverage ${item.coverageSummary.files.reduce((sum, file) => sum + file.linesHit, 0)}/${item.coverageSummary.files.reduce((sum, file) => sum + file.linesFound, 0)} lines)`
+      : "";
+    lines.push(`${mark(item.exitCode === 0 && !item.evidenceError && structuredPass)} ${item.kind.padEnd(10)} ${item.command ?? "recorded evidence"}${suffix}${coverage}`);
   }
   lines.push("", "Requirements");
   for (const requirement of intent.requirements) {

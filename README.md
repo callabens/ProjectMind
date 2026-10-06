@@ -21,6 +21,7 @@ Implemented:
 - conservative file-level change and reverse-import impact analysis
 - deterministic Project Constitution enforcement for dependency boundaries and sensitive paths
 - explicit requirement-to-command-and-test evidence bindings
+- optional LCOV-backed source coverage bindings for reviewed requirement paths
 - deterministic read-only binding suggestions with explicit heuristic reasons
 - read-only `projectmind doctor` diagnostics for configuration and binding gaps
 - fresh, single-run evidence tied to Git HEAD and repository content

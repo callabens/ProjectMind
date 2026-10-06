@@ -92,6 +92,7 @@ export async function bindRequirement(
   command: string,
   id?: string,
   testNames: string[] = [],
+  coveragePaths: string[] = [],
 ): Promise<IntentContract> {
   const config = await loadConfig(root);
   const registered = config.verification.commands.find((item) => item.command === command);
@@ -105,8 +106,10 @@ export async function bindRequirement(
   if ((registered.provider === "node-test-junit" || registered.provider === "pytest-junit") && !testNames.length) {
     throw new Error("Bind at least one exact test name with --test.");
   }
+  if (coveragePaths.length && !registered.coveragePath) throw new Error("Coverage bindings require a configured coveragePath on the bound command.");
   requirement.evidenceCommands = [...new Set([...(requirement.evidenceCommands ?? []), command])];
   requirement.evidenceTests = [...new Set([...(requirement.evidenceTests ?? []), ...testNames])];
+  requirement.coveragePaths = [...new Set([...(requirement.coveragePaths ?? []), ...coveragePaths])];
   intentSchema.parse(intent);
   await writeJson(join(projectMindDir(root), "intents", `${intent.id}.json`), intent);
   return intent;

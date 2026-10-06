@@ -46,12 +46,16 @@ export function verifyIntent(config: ProjectConfig, intent: IntentContract, evid
       || structuredTestRecords.length !== records.length
       || testMatches.some((matches) => matches.length !== 1 || matches[0]?.status !== "passed")
     );
+    const coveragePaths = requirement.coveragePaths ?? [];
+    const missingCoverage = coveragePaths.some((path) => !records.some((record) =>
+      record?.coverageSummary?.files.some((file) => file.path === path && file.linesHit > 0)));
     const missing = !bindings.length || !requirement.evidenceKinds.length || !registered || records.some((item) => !item)
       || requirement.evidenceKinds.some((kind) => !coveredKinds.has(kind))
       || records.some((item) => item && !config.verification.commands.some((command) => command.command === item.command && command.kind === item.kind))
-      || invalidTestBinding;
+      || invalidTestBinding
+      || missingCoverage;
     const status = failed ? "FAILED" : missing ? "UNVERIFIED" : "VERIFIED";
-    if (status !== "VERIFIED") reasons.push(`${requirement.id}: ${failed ? "bound evidence failed" : invalidTestBinding ? "structured test binding is missing, ambiguous, skipped, or failed" : "missing explicit, fresh command evidence"}.`);
+    if (status !== "VERIFIED") reasons.push(`${requirement.id}: ${failed ? "bound evidence failed" : invalidTestBinding ? "structured test binding is missing, ambiguous, skipped, or failed" : missingCoverage ? "bound coverage path has no executed lines" : "missing explicit, fresh command evidence"}.`);
     return { requirementId: requirement.id, status: status as "VERIFIED" | "UNVERIFIED" | "FAILED", evidenceIds };
   });
   return {

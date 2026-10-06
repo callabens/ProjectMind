@@ -35,6 +35,24 @@ The Node and pytest providers parse JUnit XML, reject zero-test and all-skipped 
 
 Python files are parsed with the installed Python 3 `ast` module. Local absolute and relative imports become graph edges; missing modules remain unresolved and therefore fail closed under applicable Constitution dependency rules. Python 3 is required when `.py` files are included in a scan.
 
+## Optional coverage bindings
+
+A structured test command may declare a repository-relative LCOV output path:
+
+```json
+{
+  "kind": "test",
+  "command": "npm run test:coverage:junit",
+  "required": true,
+  "provider": "node-test-junit",
+  "coveragePath": ".projectmind/runtime/lcov.info"
+}
+```
+
+Bind reviewed source paths explicitly with `projectmind intent bind REQ-1 --command "npm run test:coverage:junit" --test "login succeeds" --covers src/auth.ts`. Coverage reports are restricted to `.projectmind/runtime/`, where ProjectMind safely removes the old report before execution. The fresh command must recreate it, and every bound path must contain at least one executed line. Missing, empty, malformed, outside-repository, unrelated, or zero-hit coverage fails closed.
+
+Coverage is command-level, not per-testcase. It proves that the bound command executed lines in a reviewed file during the same fresh run; it does not prove that the named testcase alone executed those lines or that its assertions are strong enough. Exact testcase binding and human relevance review remain required.
+
 ## Refusal cases
 
 - no intent requirements or no required commands
@@ -66,5 +84,7 @@ A version-1 JSON artifact includes `projectMindVersion`, `scope: declared-comman
 The runtime source of truth is `proofPackSchema` in `packages/core/src/schema.ts`. Every ProofPack is validated before it is written. The generated public [JSON Schema](../schemas/proofpack-v1.schema.json) is checked into the repository for non-TypeScript consumers, and CI regenerates it to detect drift.
 
 `version: 1` accepts backward-compatible additions only after the runtime schema, public schema, fixture, and documentation are updated together. Removing or changing a required field, identifier format, enum meaning, or verification invariant requires a new format version. `projectMindVersion` records the producing implementation and does not replace the format version.
+
+The optional `coveragePath`, `coveragePaths`, and `coverageSummary` fields are backward-compatible v1 additions. Older v1 artifacts without coverage remain valid unless their intent explicitly requires coverage paths.
 
 The fixture under `fixtures/proofpack-v1/valid.json` is a compatibility contract. A VERIFIED v1 pack must cover every intent requirement, reference evidence contained in the pack, contain passing required checks, and bind evidence to one run and repository state. JSON Schema validates portable structure; runtime validation also enforces cross-object relationships that JSON Schema cannot fully express.

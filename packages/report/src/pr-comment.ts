@@ -27,13 +27,18 @@ export function formatPullRequestComment(input: unknown): string {
     "",
     `Intent: **${safe(proof.intent.id)} — ${safe(proof.intent.title)}**`,
     "",
-    "| Requirement | Status | Bound evidence |",
-    "| --- | --- | ---: |",
+    "| Requirement | Status | Bound evidence | Coverage paths |",
+    "| --- | --- | ---: | --- |",
     ...requirements.map((requirement) => {
       const result = results.get(requirement.id);
       const resultStatus = result?.status ?? "UNVERIFIED";
       const resultIcon = resultStatus === "VERIFIED" ? "✅" : resultStatus === "FAILED" ? "❌" : "⚠️";
-      return `| ${safe(requirement.id)} — ${safe(requirement.statement)} | ${resultIcon} ${resultStatus} | ${result?.evidenceIds.length ?? 0} |`;
+      const coverage = requirement.coveragePaths?.length ? requirement.coveragePaths.map((path) => {
+        const hit = proof.evidence.some((record) => result?.evidenceIds.includes(record.id)
+          && record.coverageSummary?.files.some((file) => file.path === path && file.linesHit > 0));
+        return `${hit ? "✅" : "⚠️"} ${safe(path)}`;
+      }).join("<br>") : "—";
+      return `| ${safe(requirement.id)} — ${safe(requirement.statement)} | ${resultIcon} ${resultStatus} | ${result?.evidenceIds.length ?? 0} | ${coverage} |`;
     }),
   ];
   if (proof.intent.requirements.length > MAX_REQUIREMENTS) lines.push("", `_Only the first ${MAX_REQUIREMENTS} requirements are shown._`);
