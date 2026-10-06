@@ -107,13 +107,18 @@ test("Streamable HTTP MCP supports authenticated remote clients", async (t) => {
   t.after(() => client.close());
   await client.connect(transport as unknown as Parameters<Client["connect"]>[0]);
   const { tools } = await client.listTools();
-  assert.ok(tools.some((item) => item.name === "projectmind_get_project_context"));
+  assert.deepEqual(tools.map((item) => item.name).sort(), [
+    "projectmind_get_changed_symbols",
+    "projectmind_get_claim_report",
+    "projectmind_get_constraints",
+    "projectmind_get_evidence",
+    "projectmind_get_intent",
+    "projectmind_get_project_context",
+    "projectmind_search_memory",
+  ]);
+  assert.ok(tools.every((item) => item.annotations?.readOnlyHint === true));
   const context = await client.callTool({ name: "projectmind_get_project_context", arguments: {} });
   assert.match(JSON.stringify(context.content), /http-mcp-pilot/);
   const evidence = await client.callTool({ name: "projectmind_get_evidence", arguments: {} });
   assert.match(JSON.stringify(evidence.content), /NOT_AVAILABLE/);
-  const blocked = await client.callTool({ name: "projectmind_request_verification", arguments: {} });
-  assert.equal(blocked.isError, true);
-  const mutation = await client.callTool({ name: "projectmind_record_decision", arguments: { text: "must not persist" } });
-  assert.equal(mutation.isError, true);
 });

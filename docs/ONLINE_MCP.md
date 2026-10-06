@@ -15,7 +15,7 @@ The endpoints are:
 - `GET /health` for deployment health checks
 - `POST /mcp` for stateless MCP Streamable HTTP
 
-Put the service behind HTTPS, then enter `https://your-host.example/mcp` as the custom connector URL. Public servers are read-only by default: verification execution, memory writes, and claim writes remain blocked.
+Put the service behind HTTPS, then enter `https://your-host.example/mcp` as the custom connector URL. Public servers are read-only by default: verification execution, memory writes, and claim writes are not advertised to remote clients. Read tools carry MCP read-only and idempotency annotations so compatible clients can present an accurate permission surface.
 
 This repository also includes a Vercel function, `vercel.json`, and a minimal `public` status page. Import the GitHub repository into Vercel with the repository root as the project root; the resulting deployment exposes `/mcp` and `/health` without requiring a separate web framework.
 
