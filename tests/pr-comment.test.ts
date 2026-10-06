@@ -9,6 +9,7 @@ test("PR comment renders a bounded requirement table and honest scope", async ()
   assert.match(body, /^<!-- projectmind-verification -->/);
   assert.match(body, /ProjectMind: VERIFIED/);
   assert.match(body, /REQ-1 — Login succeeds/);
+  assert.match(body, /Coverage paths/);
   assert.match(body, /declared-command evidence/);
   assert.equal(body.match(new RegExp(pullRequestCommentMarker, "g"))?.length, 1);
 });
