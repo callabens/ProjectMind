@@ -1,6 +1,6 @@
 import { spawn, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { join } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { readFile, rm } from "node:fs/promises";
 import { XMLParser, XMLValidator } from "fast-xml-parser";
 import { currentCommit, repositoryState } from "../../git/src/index.ts";
@@ -69,6 +69,36 @@ function parseJunit(stdout: string, provider: "node-test-junit" | "pytest-junit"
 export const parseNodeTestJunit = (stdout: string): NonNullable<EvidenceRecord["testSummary"]> => parseJunit(stdout, "node-test-junit");
 export const parsePytestJunit = (stdout: string): NonNullable<EvidenceRecord["testSummary"]> => parseJunit(stdout, "pytest-junit");
 
+export function parseLcovCoverage(rootInput: string, input: string): NonNullable<EvidenceRecord["coverageSummary"]> {
+  const root = resolve(rootInput);
+  const files = new Map<string, Map<number, number>>();
+  let current: Map<number, number> | undefined;
+  for (const raw of input.split(/\r?\n/)) {
+    if (raw.startsWith("SF:")) {
+      const source = raw.slice(3).trim();
+      const absolute = isAbsolute(source) ? resolve(source) : resolve(root, source);
+      const path = relative(root, absolute).split(sep).join("/");
+      if (!path || path === ".." || path.startsWith("../")) throw new Error("LCOV source path escapes the repository root.");
+      current = files.get(path) ?? new Map<number, number>();
+      files.set(path, current);
+    } else if (raw.startsWith("DA:") && current) {
+      const [lineText, countText] = raw.slice(3).split(",");
+      const line = Number(lineText);
+      const count = Number(countText);
+      if (!Number.isInteger(line) || line < 1 || !Number.isInteger(count) || count < 0) throw new Error("Invalid LCOV line record.");
+      current.set(line, (current.get(line) ?? 0) + count);
+    } else if (raw === "end_of_record") current = undefined;
+  }
+  return {
+    provider: "lcov",
+    files: [...files.entries()].map(([path, lines]) => ({
+      path,
+      linesFound: lines.size,
+      linesHit: [...lines.values()].filter((count) => count > 0).length,
+    })).sort((a, b) => a.path.localeCompare(b.path)),
+  };
+}
+
 function run(root: string, item: VerificationCommand): Promise<{ exitCode: number; stdout: string; stderr: string; termination?: NonNullable<EvidenceRecord["termination"]> }> {
   return new Promise((resolve) => {
     const env = { ...process.env };
@@ -112,6 +142,11 @@ export async function collectCommandEvidence(root: string, item: VerificationCom
     await ensureDir(join(projectMindDir(root), "runtime"));
     await rm(pytestReport, { force: true });
   }
+  const coverageReport = item.coveragePath ? resolve(root, item.coveragePath) : undefined;
+  if (coverageReport) {
+    await ensureDir(dirname(coverageReport));
+    await rm(coverageReport, { force: true });
+  }
   const before = await repositoryState(root);
   const startedAt = nowIso();
   const start = Date.now();
@@ -128,12 +163,23 @@ export async function collectCommandEvidence(root: string, item: VerificationCom
       evidenceError = error instanceof Error ? error.message : String(error);
     }
   }
+  let coverageSummary: EvidenceRecord["coverageSummary"];
+  if (coverageReport) {
+    try {
+      coverageSummary = parseLcovCoverage(root, await readFile(coverageReport, "utf8"));
+      if (!coverageSummary.files.length) throw new Error("LCOV report contains no source files.");
+    } catch (error) {
+      const message = `Coverage report failed: ${error instanceof Error ? error.message : String(error)}`;
+      evidenceError = evidenceError ? `${evidenceError} ${message}` : message;
+    }
+  }
   const evidence: EvidenceRecord = {
     version: 1, id: stableId("ev", randomUUID()), kind: item.kind, command: item.command,
     startedAt, finishedAt, durationMs: Date.now() - start, ...result,
     runId, repositoryState: before, repositoryStateAfter: await repositoryState(root),
     provider: item.provider ?? "generic-command",
     ...(testSummary ? { testSummary } : {}),
+    ...(coverageSummary ? { coverageSummary } : {}),
     ...(evidenceError ? { evidenceError } : {}),
     ...(commit ? { commit } : {}),
   };
