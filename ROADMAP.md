@@ -34,6 +34,7 @@ Before `v0.1.0` can be released:
 - [x] versioned provider/plugin SDK with example provider
 - [x] generic MCP stdio compatibility pilot and reusable CI test
 - [x] deterministic requirement binding suggestions without automatic intent mutation
+- [x] read-only project doctor for configuration and requirement-binding gaps
 - [ ] interactive Claude Code compatibility pilot; project config/root semantics are automated
 - [ ] second independent real repository using the released tool; self-hosted pilot is the first
 

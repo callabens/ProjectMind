@@ -10,6 +10,7 @@ import { runMcpHttpServer, runMcpServer } from "../../../packages/mcp/src/index.
 import { recordMemory, searchMemory, type MemoryType } from "../../../packages/memory/src/index.ts";
 import { getClaimReport, recordClaim } from "../../../packages/claims/src/index.ts";
 import { PROJECTMIND_VERSION } from "../../../packages/core/src/index.ts";
+import { diagnoseProject } from "../../../packages/doctor/src/index.ts";
 
 interface ParsedArgs {
   positionals: string[];
@@ -43,7 +44,7 @@ function optionValues(args: ParsedArgs, key: string): string[] {
 }
 
 function help(): string {
-  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  scan\n  changes\n  intent create <title> [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
+  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  doctor [--json]\n  scan\n  changes\n  intent create <title> [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
 }
 
 async function main(): Promise<void> {
@@ -61,6 +62,20 @@ async function main(): Promise<void> {
     const graph = await buildMindGraph(root, config);
     await persistMindGraph(root, graph);
     console.log(formatInit(config, graph));
+    return;
+  }
+
+  if (command === "doctor") {
+    const report = await diagnoseProject(root);
+    if (args.options.has("json")) console.log(JSON.stringify(report, null, 2));
+    else console.log([
+      `ProjectMind doctor: ${report.status}`,
+      `Project: ${report.projectName ?? "unknown"}`,
+      `Intent: ${report.intentId ?? "none"}`,
+      "",
+      ...(report.diagnostics.length ? report.diagnostics.map((item) => `${item.severity.toUpperCase()} ${item.code}: ${item.message}${item.remedy ? `\n  ${item.remedy}` : ""}`) : ["No configuration or binding problems found."]),
+    ].join("\n"));
+    if (report.status !== "READY") process.exitCode = 2;
     return;
   }
 
