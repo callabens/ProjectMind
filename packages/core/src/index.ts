@@ -14,6 +14,7 @@ export interface VerificationCommand {
   required: boolean;
   timeoutMs?: number;
   provider?: EvidenceProviderKind;
+  coveragePath?: string;
 }
 
 export interface ProjectConfig {
@@ -86,6 +87,7 @@ export interface Requirement {
   evidenceKinds: EvidenceKind[];
   evidenceCommands?: string[];
   evidenceTests?: string[];
+  coveragePaths?: string[];
 }
 
 export interface TestCaseEvidence {
@@ -104,6 +106,15 @@ export interface TestEvidenceSummary {
   failed: number;
   skipped: number;
   cases: TestCaseEvidence[];
+}
+
+export interface CoverageEvidenceSummary {
+  provider: "lcov";
+  files: Array<{
+    path: string;
+    linesFound: number;
+    linesHit: number;
+  }>;
 }
 
 export interface IntentContract {
@@ -134,6 +145,7 @@ export interface EvidenceRecord {
   termination?: "timeout" | "output-limit" | "spawn-error";
   provider?: EvidenceProviderKind;
   testSummary?: TestEvidenceSummary;
+  coverageSummary?: CoverageEvidenceSummary;
   evidenceError?: string;
 }
 
