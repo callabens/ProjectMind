@@ -51,6 +51,10 @@ function inspectIntent(intent: IntentContract, config: ProjectConfig): DoctorDia
     if (requirement.evidenceKinds.includes("test") && !requirement.evidenceTests?.length) diagnostics.push({
       code: "MISSING_TESTCASE_BINDING", severity: "error", message: `${requirement.id} requires test evidence but has no exact testcase binding.`, remedy: `Bind one or more exact testcase names for ${requirement.id}.`,
     });
+    if (requirement.coveragePaths?.length && !requirement.evidenceCommands.some((command) =>
+      config.verification.commands.some((item) => item.command === command && item.coveragePath))) diagnostics.push({
+      code: "COVERAGE_COMMAND_MISSING", severity: "error", message: `${requirement.id} declares coverage paths but none of its commands produces LCOV evidence.`, remedy: "Configure coveragePath on a bound verification command.",
+    });
   }
   if (!intent.preserve.length && !intent.outOfScope.length) diagnostics.push({ code: "NO_SCOPE_DECLARATIONS", severity: "info", message: `Intent ${intent.id} has no preserve or out-of-scope declarations.` });
   return diagnostics;
