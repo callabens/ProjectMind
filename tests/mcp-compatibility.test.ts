@@ -54,6 +54,7 @@ test("generic stdio and Claude-style project-root pilots negotiate and expose th
     "projectmind_record_decision",
     "projectmind_request_verification",
     "projectmind_search_memory",
+    "projectmind_suggest_bindings",
   ]);
   assert.ok(tools.every((item) => item.inputSchema.type === "object"));
   const context = await client.callTool({ name: "projectmind_get_project_context", arguments: {} });
@@ -115,6 +116,7 @@ test("Streamable HTTP MCP supports authenticated remote clients", async (t) => {
     "projectmind_get_intent",
     "projectmind_get_project_context",
     "projectmind_search_memory",
+    "projectmind_suggest_bindings",
   ]);
   assert.ok(tools.every((item) => item.annotations?.readOnlyHint === true));
   const context = await client.callTool({ name: "projectmind_get_project_context", arguments: {} });
