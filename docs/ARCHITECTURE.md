@@ -9,7 +9,7 @@ The deterministic core is model-independent. No LLM decides a verdict.
 | `graph` | Symbols, containment, TypeScript/Python imports, workspace/dependency links, unresolved-import diagnostics, labelled test-name heuristics |
 | `git` | Working-tree/base-ref changes, deleted-symbol reconstruction, reverse-import impact, repository content fingerprint |
 | `intent` | Requirement declarations and explicit command bindings |
-| `evidence` | Fresh command execution, bounded output, timeouts, one run id, Node and pytest JUnit parsing |
+| `evidence` | Fresh command execution, bounded output, timeouts, one run id, Node and pytest JUnit parsing, optional LCOV parsing |
 | `verifier` | Pure declared-check verdict; orchestration rescans and rejects repository drift |
 | `proofpack` | Runtime-validated JSON artifacts with intent, changes, evidence, scope and verdict |
 | `mcp` | Official SDK stdio and Streamable HTTP transports, validated tool arguments, operator-controlled execution and mutations |
