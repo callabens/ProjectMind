@@ -3,23 +3,100 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ProjectMind MCP</title>
-    <meta name="description" content="ProjectMind online MCP endpoint">
-    <style>
-      :root { color-scheme: dark; font-family: ui-sans-serif, system-ui, sans-serif; }
-      body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #09090b; color: #fafafa; }
-      main { width: min(38rem, calc(100% - 3rem)); padding: 2rem; border: 1px solid #27272a; border-radius: 1rem; background: #111113; }
-      h1 { margin: 0 0 .5rem; font-size: 1.8rem; }
-      p { color: #a1a1aa; line-height: 1.6; }
-      code { color: #d4d4d8; background: #27272a; padding: .2rem .4rem; border-radius: .3rem; }
-      a { color: #fafafa; }
-    </style>
+    <meta name="theme-color" content="#0b0f0e">
+    <title>ProjectMind — Evidence before verdicts</title>
+    <meta name="description" content="ProjectMind verifies AI coding-agent claims against fresh tests, repository state, and explicit requirements.">
+    <meta property="og:title" content="ProjectMind — Evidence before verdicts">
+    <meta property="og:description" content="Your agent writes code. ProjectMind checks the evidence.">
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/app.js" defer></script>
   </head>
   <body>
-    <main>
-      <h1>ProjectMind MCP</h1>
-      <p>The read-only online MCP service is available at <code>/mcp</code>.</p>
-      <p>Deployment health: <a href="/health">/health</a> · Source: <a href="https://github.com/callabens/ProjectMind">GitHub</a></p>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <a class="wordmark" href="#top" aria-label="ProjectMind home"><span aria-hidden="true">›</span> ProjectMind</a>
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="#how-it-works">How it works</a>
+        <a href="https://github.com/callabens/ProjectMind#readme">Docs</a>
+        <a href="https://github.com/callabens/ProjectMind">GitHub</a>
+        <a href="https://www.npmjs.com/package/@callabens/projectmind">npm</a>
+      </nav>
+      <a class="button button-accent header-cta" href="#install">Install ProjectMind <span aria-hidden="true">→</span></a>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top">
+        <div class="hero-copy">
+          <p class="eyebrow">Open source. Local first. Model agnostic.</p>
+          <h1>Your agent writes code. <span>ProjectMind</span> checks the evidence.</h1>
+          <p class="lede">Agent claims aren’t trusted until fresh tests, repository state, and explicit requirement bindings produce a verdict.</p>
+
+          <div class="install-command" id="install">
+            <code><span aria-hidden="true">$</span> npm install -g @callabens/projectmind@next</code>
+            <button class="copy-button" type="button" data-copy="npm install -g @callabens/projectmind@next" aria-label="Copy install command">Copy</button>
+          </div>
+          <div class="hero-actions">
+            <a class="button button-accent" href="https://github.com/callabens/ProjectMind#quick-start">Start locally</a>
+            <a class="button button-outline" href="https://github.com/callabens/ProjectMind/blob/main/docs/ONLINE_MCP.md">Connect online MCP</a>
+          </div>
+        </div>
+
+        <div class="proof-terminal" aria-label="ProjectMind verification example">
+          <div class="terminal-bar">
+            <strong><span aria-hidden="true">›</span> ProjectMind</strong>
+            <span class="terminal-status" data-terminal-status>verifying...</span>
+          </div>
+          <ol class="proof-steps">
+            <li class="proof-step is-visible">
+              <span class="step-marker" aria-hidden="true"></span>
+              <div><div class="step-heading"><strong>Intent</strong><time>10:14:03</time></div><p>Agent proposes a change.</p><code>“Add rate limiting to the API.”</code></div>
+            </li>
+            <li class="proof-step is-visible">
+              <span class="step-marker" aria-hidden="true"></span>
+              <div><div class="step-heading"><strong>Change</strong><time>10:14:21</time></div><p>Code is written and applied.</p><code>M&nbsp; src/api/rateLimiter.ts<br>A&nbsp; tests/rateLimiter.test.ts</code></div>
+            </li>
+            <li class="proof-step is-visible">
+              <span class="step-marker" aria-hidden="true"></span>
+              <div><div class="step-heading"><strong>Evidence</strong><time>10:14:36</time></div><p>Fresh tests, repository state, and requirement bindings are checked.</p><ul><li><span>PASS</span> Tests pass (12/12)</li><li><span>PASS</span> Repository matches claim</li><li><span>PASS</span> Requirements traced (REQ-3)</li></ul></div>
+            </li>
+            <li class="proof-step verdict is-visible">
+              <span class="step-marker" aria-hidden="true"></span>
+              <div><div class="step-heading"><strong>Verdict</strong><time>10:14:36</time></div><p>The change is consistent with intent, evidence, and requirements.</p><b class="verified">VERIFIED</b></div>
+            </li>
+          </ol>
+          <div class="terminal-footer"><span>Intent</span><i>→</i><span>Change</span><i>→</i><span>Evidence</span><i>→</i><strong>Verdict</strong><button type="button" data-replay>Replay</button></div>
+        </div>
+      </section>
+
+      <section class="trust" id="how-it-works">
+        <div class="trust-copy">
+          <p class="eyebrow">The trust boundary</p>
+          <h2>Agent output is a claim.<br>Evidence turns it into a verdict.</h2>
+          <p>ProjectMind runs fresh checks, inspects the real repository state, and checks explicit requirement bindings before accepting an agent’s work. If the evidence doesn’t line up, the change isn’t verified.</p>
+        </div>
+        <div class="trust-flow" aria-label="ProjectMind trust flow">
+          <article><span>01</span><h3>Intent</h3><p>A goal or requirement the agent is asked to fulfill.</p></article>
+          <article><span>02</span><h3>Change</h3><p>Agent writes and applies code.</p></article>
+          <article><span>03</span><h3>Evidence</h3><p>Fresh checks, repository state, and bindings are inspected.</p></article>
+          <article class="flow-verdict"><span>04</span><h3>Verdict</h3><p>Only matching evidence earns <strong>VERIFIED</strong>.</p></article>
+        </div>
+      </section>
+
+      <section class="closing">
+        <p class="eyebrow">Built for agentic development</p>
+        <h2>Make “done” mean proven.</h2>
+        <p>Use the CLI locally, connect through MCP, or add ProjectMind to CI. The verification boundary stays deterministic.</p>
+        <div class="hero-actions">
+          <a class="button button-accent" href="https://github.com/callabens/ProjectMind#quick-start">Read the quick start</a>
+          <a class="button button-outline" href="https://github.com/callabens/ProjectMind">View source</a>
+        </div>
+      </section>
     </main>
+
+    <footer>
+      <a class="wordmark" href="#top"><span aria-hidden="true">›</span> ProjectMind</a>
+      <p>Open-source evidence verification for coding agents.</p>
+      <div><a href="/health">Health</a><a href="/mcp">MCP endpoint</a><a href="https://github.com/callabens/ProjectMind/blob/main/LICENSE">Apache-2.0</a></div>
+    </footer>
   </body>
 </html>
