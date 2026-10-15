@@ -3,6 +3,7 @@
 ## Unreleased — 0.1.0-dev
 
 - Add deterministic `projectmind proof diff` text and JSON output for verdict and requirement transitions between validated ProofPacks.
+- Add validated, filterable `projectmind proof history` output for local ProofPack timelines.
 - Recover the original local bootstrap and establish the public GitHub project.
 - Replace regex JS/TS extraction with TypeScript AST scanning.
 - Require explicit requirement-to-command evidence bindings.

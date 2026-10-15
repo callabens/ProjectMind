@@ -13,7 +13,7 @@ import { getClaimReport, recordClaim } from "../../../packages/claims/src/index.
 import { PROJECTMIND_VERSION } from "../../../packages/core/src/index.ts";
 import { diagnoseProject } from "../../../packages/doctor/src/index.ts";
 import { formatPullRequestComment } from "../../../packages/report/src/pr-comment.ts";
-import { diffProofPacks } from "../../../packages/proofpack/src/index.ts";
+import { diffProofPacks, listProofPackHistory } from "../../../packages/proofpack/src/index.ts";
 
 interface ParsedArgs {
   positionals: string[];
@@ -47,7 +47,7 @@ function optionValues(args: ParsedArgs, key: string): string[] {
 }
 
 function help(): string {
-  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  doctor [--json]\n  scan\n  changes\n  intent create <title> [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--covers <source-path>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  proof diff <before.json> <after.json> [--json]\n  report pr-comment [proof-path] [--output <path>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
+  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  doctor [--json]\n  scan\n  changes\n  intent create <title> [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--covers <source-path>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  proof diff <before.json> <after.json> [--json]\n  proof history [--intent <id>] [--limit <1-100>] [--json]\n  report pr-comment [proof-path] [--output <path>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
 }
 
 async function main(): Promise<void> {
@@ -161,6 +161,21 @@ async function main(): Promise<void> {
       "",
       ...diff.requirements.map((item) => `${item.change.padEnd(9)} ${item.requirementId}  ${item.before} -> ${item.after}${item.statementBefore !== item.statementAfter ? "  statement changed" : ""}`),
     ].join("\n"));
+    return;
+  }
+
+  if (command === "proof" && subcommand === "history") {
+    const rawLimit = optionValues(args, "limit")[0];
+    const limit = rawLimit === undefined ? 20 : Number(rawLimit);
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error("Proof history limit must be an integer from 1 to 100.");
+    const intentId = optionValues(args, "intent")[0];
+    const entries = await listProofPackHistory(root, { ...(intentId ? { intentId } : {}), limit });
+    if (args.options.has("json")) console.log(JSON.stringify(entries, null, 2));
+    else console.log(entries.length ? [
+      `ProofPack history (${entries.length})`,
+      "",
+      ...entries.map((entry) => `${entry.createdAt}  ${entry.status.padEnd(18)} ${entry.intentId}  ${entry.proofId}${entry.commit ? `  ${entry.commit.slice(0, 10)}` : ""}`),
+    ].join("\n") : "No ProofPack history found.");
     return;
   }
 
