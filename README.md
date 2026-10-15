@@ -79,6 +79,8 @@ For a runnable example, see [examples/basic-ts](examples/basic-ts/README.md). Th
 
 Run `pnpm demo` for the deterministic recording flow: an unbound passing test fails closed, an exact binding verifies, and a real regression returns the verdict to `NOT_VERIFIED`. See the [demo recording guide](docs/DEMO.md).
 
+The completed 21-second trust-gate recording follows the same deterministic `NOT_VERIFIED → VERIFIED → NOT_VERIFIED` flow. Publishing the binary as a GitHub-hosted attachment remains a release task.
+
 Free-form claims can carry explicit evidence, intent, and requirement links. `projectmind claim report` reports their historical linkage strength without treating claim text as evidence or changing verification state.
 
 ## MCP and CI
@@ -105,6 +107,8 @@ The hosted read-only transport was exercised through a real Claude Web custom co
 Local first · Model agnostic · Deterministic core · AI optional · Evidence > claims · No self-verification API · Git native · Open formats · Extensible · Secure by default
 
 See [architecture](docs/ARCHITECTURE.md), [Project Constitution](docs/CONSTITUTION.md), [platform support](docs/PLATFORMS.md), [roadmap](ROADMAP.md), [contributing](CONTRIBUTING.md), and [security policy](SECURITY.md).
+
+Maintainers tracking the Claude for Open Source milestone should use the [eligibility and application readiness record](docs/CLAUDE_OSS_READINESS.md). It separates completed product work from the program's externally measured eligibility thresholds.
 
 Maintainers preparing a package release should follow the fail-closed [release readiness guide](docs/RELEASING.md). The distribution name is not considered confirmed until the intended npm maintainer account controls it.
 

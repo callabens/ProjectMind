@@ -1,6 +1,6 @@
 # Roadmap — v0.3 application candidate
 
-This plan stops at the Claude for Open Source application milestone. Program criteria must be checked against Anthropic's official page at application time. A release or contributor target is not an acceptance guarantee.
+This plan stops at the Claude for Open Source application milestone. Program criteria were last checked against Anthropic's official page on 2026-10-07. A release or contributor target is not an acceptance guarantee; see the [readiness record](docs/CLAUDE_OSS_READINESS.md).
 
 ## v0.1 — trustworthy development preview → stable CLI
 
@@ -23,8 +23,8 @@ Before `v0.1.0` can be released:
 - [x] cross-platform runner decision; tested OS support documented
 - [x] npm namespace ownership and distribution naming confirmed (`@callabens/projectmind`)
 - [x] first real repository pilot: ProjectMind verifies its own trust-boundary intent in CI
-- [ ] clear demo recording
-  - deterministic recording runner, storyboard and final MP4 are complete; a public GitHub-hosted attachment remains
+- [ ] clear public demo recording
+  - deterministic recording runner, storyboard and final 21-second MP4 are complete; a public GitHub-hosted attachment remains
 
 ## v0.2 — real-world verification
 
@@ -50,6 +50,8 @@ Release gate: stable JS/TS and usable Python behavior, CI/CLI/MCP integration, m
 - [ ] three stable public releases, recent development, real usage and healthy CI
 - [ ] target 25 genuine external contributors with merged contributions
 - [ ] collect actual reach/adoption metrics; prepare the application from real data
+
+Current official eligibility thresholds include at least one of: 500 dependent repositories, 100 dependent packages, 200,000 combined monthly registry downloads, recognized foundation/language-project maintainership, 100 merged PRs into repositories not owned by the applicant in the last 12 months, 20 unique external contributors with merged PRs in one repository in the last 12 months, or an OpenSSF criticality score of at least 0.4. ProjectMind does not currently claim any threshold is met.
 
 Contributor growth depends on people choosing to participate. Do not invent contributors, users, stars, downloads or releases; do not manufacture tiny PRs solely to inflate metrics.
 
