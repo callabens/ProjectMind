@@ -122,3 +122,10 @@ Compare two validated ProofPacks to see verdict and requirement-level changes:
 projectmind proof diff before.json after.json
 projectmind proof diff before.json after.json --json
 ```
+
+Inspect validated local ProofPack history without opening artifact files manually:
+
+```bash
+projectmind proof history
+projectmind proof history --intent PM-0001 --limit 10 --json
+```

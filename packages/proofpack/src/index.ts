@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { readdir, readFile } from "node:fs/promises";
 import { PROJECTMIND_VERSION, nowIso, projectMindDir, stableId, writeJson, type ChangeSummary, type EvidenceRecord, type IntentContract, type ProofPack, type VerificationResult } from "../../core/src/index.ts";
 import { proofPackSchema } from "../../core/src/schema.ts";
 
@@ -21,6 +22,17 @@ export interface ProofPackDiff {
   verdictChanged: boolean;
   requirements: ProofPackRequirementDiff[];
   summary: { added: number; removed: number; changed: number; unchanged: number };
+}
+
+export interface ProofPackHistoryEntry {
+  proofId: string;
+  createdAt: string;
+  project: string;
+  intentId: string;
+  intentTitle: string;
+  status: VerificationResult["status"];
+  commit?: string;
+  path: string;
 }
 
 export function validateProofPack(value: unknown): ProofPack {
@@ -63,6 +75,37 @@ export function diffProofPacks(beforeValue: unknown, afterValue: unknown): Proof
       unchanged: requirements.filter((item) => item.change === "UNCHANGED").length,
     },
   };
+}
+
+export async function listProofPackHistory(
+  root: string,
+  options: { intentId?: string; limit?: number } = {},
+): Promise<ProofPackHistoryEntry[]> {
+  const directory = join(projectMindDir(root), "proofs");
+  let names: string[];
+  try {
+    names = await readdir(directory);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
+  const entries = await Promise.all(names.filter((name) => name.endsWith(".json")).map(async (name) => {
+    const path = join(directory, name);
+    const proof = validateProofPack(JSON.parse(await readFile(path, "utf8")));
+    return {
+      proofId: proof.id,
+      createdAt: proof.createdAt,
+      project: proof.project,
+      intentId: proof.intent.id,
+      intentTitle: proof.intent.title,
+      status: proof.verification.status,
+      ...(proof.commit ? { commit: proof.commit } : {}),
+      path,
+    } satisfies ProofPackHistoryEntry;
+  }));
+  const filtered = options.intentId ? entries.filter((entry) => entry.intentId === options.intentId) : entries;
+  filtered.sort((left, right) => right.createdAt.localeCompare(left.createdAt) || left.proofId.localeCompare(right.proofId, "en"));
+  return options.limit === undefined ? filtered : filtered.slice(0, options.limit);
 }
 
 export async function createProofPack(
