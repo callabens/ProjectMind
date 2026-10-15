@@ -115,3 +115,10 @@ Maintainers preparing a package release should follow the fail-closed [release r
 ## ProofPack format
 
 ProjectMind validates each generated ProofPack against its versioned runtime contract before writing it. Non-TypeScript consumers can use the checked-in [ProofPack v1 JSON Schema](schemas/proofpack-v1.schema.json) and [compatibility fixture](fixtures/proofpack-v1/valid.json). Cross-object lineage checks remain enforced by ProjectMind’s runtime validator.
+
+Compare two validated ProofPacks to see verdict and requirement-level changes:
+
+```bash
+projectmind proof diff before.json after.json
+projectmind proof diff before.json after.json --json
+```

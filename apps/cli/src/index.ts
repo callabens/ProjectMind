@@ -13,6 +13,7 @@ import { getClaimReport, recordClaim } from "../../../packages/claims/src/index.
 import { PROJECTMIND_VERSION } from "../../../packages/core/src/index.ts";
 import { diagnoseProject } from "../../../packages/doctor/src/index.ts";
 import { formatPullRequestComment } from "../../../packages/report/src/pr-comment.ts";
+import { diffProofPacks } from "../../../packages/proofpack/src/index.ts";
 
 interface ParsedArgs {
   positionals: string[];
@@ -46,7 +47,7 @@ function optionValues(args: ParsedArgs, key: string): string[] {
 }
 
 function help(): string {
-  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  doctor [--json]\n  scan\n  changes\n  intent create <title> [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--covers <source-path>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  report pr-comment [proof-path] [--output <path>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
+  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  doctor [--json]\n  scan\n  changes\n  intent create <title> [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--covers <source-path>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  proof diff <before.json> <after.json> [--json]\n  report pr-comment [proof-path] [--output <path>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
 }
 
 async function main(): Promise<void> {
@@ -142,6 +143,24 @@ async function main(): Promise<void> {
     const { intent, evidence, result, proof } = await verifyProject(root, subcommand, optionValues(args, "base")[0]);
     console.log(`${formatVerification(intent, evidence, result)}\n\nProofPack: ${proof.id}`);
     if (result.status !== "VERIFIED") process.exitCode = 2;
+    return;
+  }
+
+  if (command === "proof" && subcommand === "diff") {
+    const [beforePath, afterPath] = rest;
+    if (!beforePath || !afterPath) throw new Error("Usage: projectmind proof diff <before.json> <after.json> [--json]");
+    const diff = diffProofPacks(
+      JSON.parse(await readFile(resolve(root, beforePath), "utf8")),
+      JSON.parse(await readFile(resolve(root, afterPath), "utf8")),
+    );
+    if (args.options.has("json")) console.log(JSON.stringify(diff, null, 2));
+    else console.log([
+      `ProofPack diff: ${diff.project}`,
+      `Verdict: ${diff.before.status} -> ${diff.after.status}${diff.verdictChanged ? " (changed)" : ""}`,
+      `Requirements: ${diff.summary.added} added, ${diff.summary.removed} removed, ${diff.summary.changed} changed, ${diff.summary.unchanged} unchanged`,
+      "",
+      ...diff.requirements.map((item) => `${item.change.padEnd(9)} ${item.requirementId}  ${item.before} -> ${item.after}${item.statementBefore !== item.statementAfter ? "  statement changed" : ""}`),
+    ].join("\n"));
     return;
   }
 
