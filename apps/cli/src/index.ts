@@ -14,6 +14,7 @@ import { PROJECTMIND_VERSION } from "../../../packages/core/src/index.ts";
 import { diagnoseProject } from "../../../packages/doctor/src/index.ts";
 import { formatPullRequestComment } from "../../../packages/report/src/pr-comment.ts";
 import { diffProofPacks, listProofPackHistory, validateProofPack } from "../../../packages/proofpack/src/index.ts";
+import { scaffoldProvider } from "../../../packages/sdk/src/scaffold.ts";
 
 interface ParsedArgs {
   positionals: string[];
@@ -47,7 +48,7 @@ function optionValues(args: ParsedArgs, key: string): string[] {
 }
 
 function help(): string {
-  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  doctor [--json]\n  scan\n  changes\n  intent create <title> [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--covers <source-path>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  proof validate <proof.json> [--json]\n  proof diff <before.json> <after.json> [--json]\n  proof history [--intent <id>] [--limit <1-100>] [--json]\n  report pr-comment [proof-path] [--previous <proof-path>] [--output <path>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
+  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  doctor [--json]\n  scan\n  changes\n  intent create <title> [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--covers <source-path>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  proof validate <proof.json> [--json]\n  proof diff <before.json> <after.json> [--json]\n  proof history [--intent <id>] [--limit <1-100>] [--json]\n  provider scaffold <name> --id <reverse-domain-id> [--directory <path>]\n  report pr-comment [proof-path] [--previous <proof-path>] [--output <path>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
 }
 
 async function main(): Promise<void> {
@@ -219,6 +220,15 @@ async function main(): Promise<void> {
     const output = optionValues(args, "output")[0];
     if (output) await writeFile(resolve(root, output), `${body}\n`, "utf8");
     else console.log(body);
+    return;
+  }
+
+  if (command === "provider" && subcommand === "scaffold") {
+    const name = rest[0];
+    const providerId = optionValues(args, "id")[0];
+    if (!name || !providerId) throw new Error("Usage: projectmind provider scaffold <name> --id <reverse-domain-id> [--directory <path>]");
+    const result = await scaffoldProvider(root, name, providerId, optionValues(args, "directory")[0]);
+    console.log([`Provider scaffold created: ${result.directory}`, ...result.files.map((path) => `  ${path}`)].join("\n"));
     return;
   }
 

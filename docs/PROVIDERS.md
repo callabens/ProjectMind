@@ -12,6 +12,14 @@ import {
 } from "@callabens/projectmind/provider-sdk";
 ```
 
+Create a standalone starter package with a provider, regression test and trust-boundary README:
+
+```bash
+projectmind provider scaffold static-checks --id com.example.static-checks
+```
+
+Use `--directory <relative-path>` to choose another location inside the current project. Existing directories are never overwritten.
+
 A provider declares an exact API version, reverse-domain-style identifier, SemVer implementation version, and its single v1 capability:
 
 ```ts
