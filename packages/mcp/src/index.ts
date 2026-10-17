@@ -59,8 +59,10 @@ export function createMcpServer(root: string, options: McpOptions = {}): McpServ
     annotations: readOnlyAnnotations,
   }, async ({ requirementId, intentId, base }) => content(await suggestRequirementBindings(root, requirementId, intentId, base)));
   server.registerTool("projectmind_get_changed_symbols", {
-    description: "Return file-level working-tree impact with a fresh graph; no commands are executed.", inputSchema: {}, annotations: readOnlyAnnotations,
-  }, async () => content(await summarizeChanges(root, await buildMindGraph(root, await loadConfig(root)))));
+    description: "Return file-level change impact with a fresh graph, optionally including committed changes since a Git base ref; no commands are executed.",
+    inputSchema: { base: z.string().trim().min(1).max(256).optional() },
+    annotations: readOnlyAnnotations,
+  }, async ({ base }) => content(await summarizeChanges(root, await buildMindGraph(root, await loadConfig(root)), base)));
   server.registerTool("projectmind_get_evidence", {
     description: "Read the last ProofPack as historical data; this never updates its verdict.", inputSchema: {}, annotations: readOnlyAnnotations,
   }, async () => {

@@ -33,6 +33,8 @@ The Node and pytest providers parse JUnit XML, reject zero-test and all-skipped 
 
 `projectmind doctor` and the read-only `projectmind_doctor` MCP tool are setup diagnostics. They report invalid or missing configuration, absent required commands, unavailable structured test providers, missing active intents, unbound requirements, undeclared bound commands, and missing exact testcase names. `READY` describes configuration health only; it is not a verification verdict and does not inspect or refresh evidence.
 
+The read-only `projectmind_get_changed_symbols` MCP tool accepts an optional `base` Git ref. Supplying a reviewed target-branch ref includes committed branch changes and reverse-import impact; omitting it reports only working-tree changes. The ref is resolved by Git without shell interpolation, and option-shaped refs are rejected.
+
 Python files are parsed with the installed Python 3 `ast` module. Local absolute and relative imports become graph edges; missing modules remain unresolved and therefore fail closed under applicable Constitution dependency rules. Python 3 is required when `.py` files are included in a scan.
 
 ## Optional coverage bindings
