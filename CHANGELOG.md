@@ -7,6 +7,7 @@
 - Add optional previous-ProofPack regression and improvement summaries to bounded PR comments.
 - Add `projectmind proof validate` for runtime and lineage validation of external ProofPack artifacts.
 - Add a no-overwrite `provider scaffold` command for standalone Provider SDK v1 starter packages.
+- Add deterministic authentication, API-contract and dependency-boundary intent templates with optional project-specific extensions.
 - Recover the original local bootstrap and establish the public GitHub project.
 - Replace regex JS/TS extraction with TypeScript AST scanning.
 - Require explicit requirement-to-command evidence bindings.
