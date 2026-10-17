@@ -4,6 +4,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { initializeProject, loadConfig } from "../../../packages/core/src/project.ts";
 import { buildMindGraph, persistMindGraph } from "../../../packages/graph/src/index.ts";
 import { createIntent, bindRequirement, suggestRequirementBindings } from "../../../packages/intent/src/index.ts";
+import { createIntentFromTemplate, listIntentTemplates } from "../../../packages/intent/src/templates.ts";
 import { summarizeChanges } from "../../../packages/git/src/index.ts";
 import { verifyProject } from "../../../packages/verifier/src/project.ts";
 import { formatChanges, formatInit, formatIntent, formatVerification } from "../../../packages/report/src/index.ts";
@@ -48,7 +49,7 @@ function optionValues(args: ParsedArgs, key: string): string[] {
 }
 
 function help(): string {
-  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  doctor [--json]\n  scan\n  changes\n  intent create <title> [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--covers <source-path>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  proof validate <proof.json> [--json]\n  proof diff <before.json> <after.json> [--json]\n  proof history [--intent <id>] [--limit <1-100>] [--json]\n  provider scaffold <name> --id <reverse-domain-id> [--directory <path>]\n  report pr-comment [proof-path] [--previous <proof-path>] [--output <path>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
+  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  doctor [--json]\n  scan\n  changes\n  intent templates [--json]\n  intent create [title] [--template <id>] [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--covers <source-path>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  proof validate <proof.json> [--json]\n  proof diff <before.json> <after.json> [--json]\n  proof history [--intent <id>] [--limit <1-100>] [--json]\n  provider scaffold <name> --id <reverse-domain-id> [--directory <path>]\n  report pr-comment [proof-path] [--previous <proof-path>] [--output <path>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
 }
 
 async function main(): Promise<void> {
@@ -101,15 +102,22 @@ async function main(): Promise<void> {
 
   if (command === "intent" && subcommand === "create") {
     const title = rest.join(" ").trim();
-    if (!title) throw new Error("Intent title is required.");
-    const intent = await createIntent(
-      root,
-      title,
-      optionValues(args, "require"),
-      optionValues(args, "preserve"),
-      optionValues(args, "out-of-scope"),
-    );
+    const templateId = optionValues(args, "template")[0];
+    if (!title && !templateId) throw new Error("Intent title or --template is required.");
+    const intent = templateId ? await createIntentFromTemplate(root, templateId, {
+      ...(title ? { title } : {}),
+      requirements: optionValues(args, "require"),
+      preserve: optionValues(args, "preserve"),
+      outOfScope: optionValues(args, "out-of-scope"),
+    }) : await createIntent(root, title, optionValues(args, "require"), optionValues(args, "preserve"), optionValues(args, "out-of-scope"));
     console.log(formatIntent(intent));
+    return;
+  }
+
+  if (command === "intent" && subcommand === "templates") {
+    const templates = listIntentTemplates();
+    if (args.options.has("json")) console.log(JSON.stringify(templates, null, 2));
+    else console.log(["Intent templates", "", ...templates.map((template) => `${template.id}\n  ${template.description}\n  ${template.requirements.length} requirements · evidence: ${template.evidenceKinds.join(", ")}`)].join("\n"));
     return;
   }
 

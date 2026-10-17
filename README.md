@@ -62,6 +62,8 @@ Run the source CLI by absolute path from the root of a trusted Git repository wi
 
 ```bash
 node /path/to/ProjectMind/apps/cli/src/index.ts init
+node /path/to/ProjectMind/apps/cli/src/index.ts intent templates
+node /path/to/ProjectMind/apps/cli/src/index.ts intent create --template authentication-regression
 node /path/to/ProjectMind/apps/cli/src/index.ts intent create "Keep login working" --require "Login succeeds"
 node /path/to/ProjectMind/apps/cli/src/index.ts verify
 # NOT_VERIFIED: REQ-1 has no explicit evidence binding; exit 2
