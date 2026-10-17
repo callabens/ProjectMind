@@ -1,7 +1,8 @@
 import { join } from "node:path";
 import { readdir, readFile } from "node:fs/promises";
-import { PROJECTMIND_VERSION, nowIso, projectMindDir, stableId, writeJson, type ChangeSummary, type EvidenceRecord, type IntentContract, type ProofPack, type VerificationResult } from "../../core/src/index.ts";
+import { PROJECTMIND_VERSION, nowIso, projectMindDir, readJson, stableId, writeJson, type ChangeSummary, type EvidenceRecord, type IntentContract, type ProofPack, type VerificationResult } from "../../core/src/index.ts";
 import { proofPackSchema } from "../../core/src/schema.ts";
+import { repositoryState } from "../../git/src/index.ts";
 
 export type ProofPackRequirementState = "VERIFIED" | "UNVERIFIED" | "FAILED" | "ABSENT";
 
@@ -35,8 +36,41 @@ export interface ProofPackHistoryEntry {
   path: string;
 }
 
+export type HistoricalProofStatus =
+  | { status: "NOT_AVAILABLE"; reason: string }
+  | { status: "INVALID_ARTIFACT"; reason: string }
+  | { status: "MATCHING_REPOSITORY_STATE" | "STALE"; proofId: string; createdAt: string; intentId: string; recordedVerdict: VerificationResult["status"]; recordedRepositoryState: string; currentRepositoryState: string };
+
 export function validateProofPack(value: unknown): ProofPack {
   return proofPackSchema.parse(value) as ProofPack;
+}
+
+export async function getHistoricalProofStatus(root: string): Promise<HistoricalProofStatus> {
+  let value: unknown;
+  try {
+    value = await readJson(join(projectMindDir(root), "latest-proof.json"));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return { status: "NOT_AVAILABLE", reason: "No historical ProofPack has been generated in this environment." };
+    throw error;
+  }
+  let proof: ProofPack;
+  try {
+    proof = validateProofPack(value);
+  } catch (error) {
+    return { status: "INVALID_ARTIFACT", reason: `The stored historical ProofPack is invalid: ${error instanceof Error ? error.message : String(error)}` };
+  }
+  const recordedRepositoryState = proof.verification.repositoryState;
+  if (!recordedRepositoryState) return { status: "INVALID_ARTIFACT", reason: "The stored historical ProofPack has no verification repository state." };
+  const currentRepositoryState = await repositoryState(root);
+  return {
+    status: recordedRepositoryState === currentRepositoryState ? "MATCHING_REPOSITORY_STATE" : "STALE",
+    proofId: proof.id,
+    createdAt: proof.createdAt,
+    intentId: proof.intent.id,
+    recordedVerdict: proof.verification.status,
+    recordedRepositoryState,
+    currentRepositoryState,
+  };
 }
 
 export function diffProofPacks(beforeValue: unknown, afterValue: unknown): ProofPackDiff {
