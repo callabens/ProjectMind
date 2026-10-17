@@ -45,9 +45,13 @@ export function createMcpServer(root: string, options: McpOptions = {}): McpServ
   });
   server.registerTool("projectmind_suggest_bindings", {
     description: "Suggest deterministic heuristic requirement-to-test bindings without mutating intent or producing evidence.",
-    inputSchema: { requirementId: z.string().regex(/^REQ-\d+$/).optional(), intentId: z.string().regex(/^PM-\d{4,}$/).optional() },
+    inputSchema: {
+      requirementId: z.string().regex(/^REQ-\d+$/).optional(),
+      intentId: z.string().regex(/^PM-\d{4,}$/).optional(),
+      base: z.string().trim().min(1).max(256).optional(),
+    },
     annotations: readOnlyAnnotations,
-  }, async ({ requirementId, intentId }) => content(await suggestRequirementBindings(root, requirementId, intentId)));
+  }, async ({ requirementId, intentId, base }) => content(await suggestRequirementBindings(root, requirementId, intentId, base)));
   server.registerTool("projectmind_get_changed_symbols", {
     description: "Return file-level working-tree impact with a fresh graph; no commands are executed.", inputSchema: {}, annotations: readOnlyAnnotations,
   }, async () => content(await summarizeChanges(root, await buildMindGraph(root, await loadConfig(root)))));

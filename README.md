@@ -23,6 +23,7 @@ Implemented:
 - explicit requirement-to-command-and-test evidence bindings
 - optional LCOV-backed source coverage bindings for reviewed requirement paths
 - deterministic read-only binding suggestions with explicit heuristic reasons
+- base-ref-aware binding suggestions for committed branch and PR changes
 - read-only `projectmind doctor` diagnostics for configuration and binding gaps
 - fresh, single-run evidence tied to Git HEAD and repository content
 - timeouts, bounded logs, fail-closed verification and JSON ProofPacks

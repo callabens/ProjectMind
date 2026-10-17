@@ -139,6 +139,25 @@ test("binding suggestions are deterministic, heuristic, and never mutate intent"
   assert.equal(cliReport.suggestions[0]?.testName, "login");
 });
 
+test("binding suggestions can analyze committed changes against a base ref", async () => {
+  const root = await fixture();
+  const base = (await execFileAsync("git", ["rev-parse", "HEAD"], { cwd: root })).stdout.trim();
+  await initializeProject(root);
+  await createIntent(root, "Keep authentication working", ["Login remains functional"], [], []);
+  await writeFile(join(root, "src", "auth.ts"), `export function login(user: string) { return user.trim().length > 0; }\n`);
+  await execFileAsync("git", ["add", "src/auth.ts"], { cwd: root });
+  await execFileAsync("git", ["commit", "-qm", "tighten login"], { cwd: root });
+
+  const withoutBase = await suggestRequirementBindings(root, "REQ-1");
+  const withBase = await suggestRequirementBindings(root, "REQ-1", undefined, base);
+  assert.ok(!withoutBase.suggestions[0]?.reasons.some((item) => item.kind === "tested-changed-file"));
+  assert.ok(withBase.suggestions[0]?.reasons.some((item) => item.kind === "tested-changed-file" && item.value === "tests/auth.test.js"));
+
+  const { stdout } = await execFileAsync(process.execPath, ["--experimental-strip-types", cli, "intent", "suggest", "REQ-1", "--base", base, "--json"], { cwd: root });
+  const cliReport = JSON.parse(stdout) as { suggestions: Array<{ reasons: Array<{ kind: string }> }> };
+  assert.ok(cliReport.suggestions[0]?.reasons.some((item) => item.kind === "tested-changed-file"));
+});
+
 test("doctor reports setup and binding gaps without producing a verdict", async () => {
   const root = await mkdtemp(join(tmpdir(), "projectmind-doctor-"));
   const missing = await diagnoseProject(root);

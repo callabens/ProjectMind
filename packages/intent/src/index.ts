@@ -115,7 +115,7 @@ export async function bindRequirement(
   return intent;
 }
 
-export async function suggestRequirementBindings(root: string, requirementId?: string, id?: string): Promise<BindingSuggestionReport> {
+export async function suggestRequirementBindings(root: string, requirementId?: string, id?: string, base?: string): Promise<BindingSuggestionReport> {
   const [config, intent] = await Promise.all([loadConfig(root), loadIntent(root, id)]);
   const requirements = requirementId ? intent.requirements.filter((item) => item.id === requirementId) : intent.requirements.filter((item) => !(item.evidenceCommands?.length));
   if (requirementId && !requirements.length) throw new Error("Unknown requirement id.");
@@ -123,7 +123,7 @@ export async function suggestRequirementBindings(root: string, requirementId?: s
   if (!structured.length) return { intentId: intent.id, status: "NO_CANDIDATES", suggestions: [], diagnostics: ["No configured structured test provider can supply exact testcase evidence."] };
 
   const graph = await buildMindGraph(root, config);
-  const changes = await summarizeChanges(root, graph);
+  const changes = await summarizeChanges(root, graph, base);
   const changed = new Set(changes.files);
   const affected = new Set(changes.affectedFiles);
   const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
