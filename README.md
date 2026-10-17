@@ -142,3 +142,11 @@ Include a bounded regression/improvement table in a safe PR comment by supplying
 ```bash
 projectmind report pr-comment current.json --previous previous.json
 ```
+
+Start a standalone Provider SDK v1 package without copying boilerplate by hand:
+
+```bash
+projectmind provider scaffold eslint-policy --id com.example.eslint-policy
+```
+
+The scaffold never overwrites an existing directory and keeps provider authority limited to validated command definitions.
