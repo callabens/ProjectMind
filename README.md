@@ -24,7 +24,7 @@ Implemented:
 - optional LCOV-backed source coverage bindings for reviewed requirement paths
 - deterministic read-only binding suggestions with explicit heuristic reasons
 - base-ref-aware binding suggestions for committed branch and PR changes
-- read-only `projectmind doctor` diagnostics for configuration and binding gaps
+- read-only `projectmind doctor` and MCP diagnostics for configuration and binding gaps
 - fresh, single-run evidence tied to Git HEAD and repository content
 - timeouts, bounded logs, fail-closed verification and JSON ProofPacks
 - official MCP SDK stdio and Streamable HTTP servers, with remote execution and mutations disabled by default

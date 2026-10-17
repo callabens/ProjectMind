@@ -10,6 +10,6 @@ Run the reusable compatibility pilot with:
 pnpm pilot:mcp
 ```
 
-The pilot launches the real CLI over stdio with the official MCP client, negotiates the protocol, checks server identity/capabilities and every tool input schema, reads project context and intent, and confirms verification execution is blocked by default. CI runs the same pilot as part of the full test suite.
+The pilot launches the real CLI over stdio with the official MCP client, negotiates the protocol, checks server identity/capabilities and every tool input schema, reads project context and intent, runs the read-only setup doctor, and confirms verification execution is blocked by default. CI runs the same pilot as part of the full test suite.
 
 This establishes generic MCP protocol compatibility, not compatibility with every branded client or every future protocol extension. Client-specific lifecycle, approval, tool-search, and UI behavior still require named pilots.

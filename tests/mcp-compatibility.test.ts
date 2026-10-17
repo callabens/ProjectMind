@@ -44,6 +44,7 @@ test("generic stdio and Claude-style project-root pilots negotiate and expose th
   assert.equal(client.getServerCapabilities()?.tools?.listChanged, true);
   const { tools } = await client.listTools();
   assert.deepEqual(tools.map((item) => item.name).sort(), [
+    "projectmind_doctor",
     "projectmind_get_changed_symbols",
     "projectmind_get_claim_report",
     "projectmind_get_constraints",
@@ -59,6 +60,9 @@ test("generic stdio and Claude-style project-root pilots negotiate and expose th
   assert.ok(tools.every((item) => item.inputSchema.type === "object"));
   const context = await client.callTool({ name: "projectmind_get_project_context", arguments: {} });
   assert.match(JSON.stringify(context.content), /mcp-pilot/);
+  const diagnosis = await client.callTool({ name: "projectmind_doctor", arguments: {} });
+  assert.match(JSON.stringify(diagnosis.content), /NEEDS_ATTENTION/);
+  assert.match(JSON.stringify(diagnosis.content), /UNBOUND_REQUIREMENT/);
   const intent = await client.callTool({ name: "projectmind_get_intent", arguments: {} });
   assert.match(JSON.stringify(intent.content), /MCP compatibility/);
   const blocked = await client.callTool({ name: "projectmind_request_verification", arguments: {} });
@@ -109,6 +113,7 @@ test("Streamable HTTP MCP supports authenticated remote clients", async (t) => {
   await client.connect(transport as unknown as Parameters<Client["connect"]>[0]);
   const { tools } = await client.listTools();
   assert.deepEqual(tools.map((item) => item.name).sort(), [
+    "projectmind_doctor",
     "projectmind_get_changed_symbols",
     "projectmind_get_claim_report",
     "projectmind_get_constraints",
@@ -121,6 +126,8 @@ test("Streamable HTTP MCP supports authenticated remote clients", async (t) => {
   assert.ok(tools.every((item) => item.annotations?.readOnlyHint === true));
   const context = await client.callTool({ name: "projectmind_get_project_context", arguments: {} });
   assert.match(JSON.stringify(context.content), /http-mcp-pilot/);
+  const diagnosis = await client.callTool({ name: "projectmind_doctor", arguments: {} });
+  assert.match(JSON.stringify(diagnosis.content), /UNBOUND_REQUIREMENT/);
   const evidence = await client.callTool({ name: "projectmind_get_evidence", arguments: {} });
   assert.match(JSON.stringify(evidence.content), /NOT_AVAILABLE/);
 });

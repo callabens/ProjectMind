@@ -12,6 +12,7 @@ import { buildMindGraph } from "../../graph/src/index.ts";
 import { verifyProject } from "../../verifier/src/project.ts";
 import { recordMemory, searchMemory } from "../../memory/src/index.ts";
 import { getClaimReport, recordClaim } from "../../claims/src/index.ts";
+import { diagnoseProject } from "../../doctor/src/index.ts";
 
 export interface McpOptions { allowExecution?: boolean; allowMutations?: boolean; exposeDisabledTools?: boolean; }
 export interface McpHttpOptions extends McpOptions {
@@ -34,6 +35,11 @@ export function createMcpServer(root: string, options: McpOptions = {}): McpServ
     const graph = await buildMindGraph(root, config);
     return content({ project: config.project, graph: { parser: graph.parser, nodes: graph.nodes.length, edges: graph.edges.length }, executionEnabled: options.allowExecution === true });
   });
+  server.registerTool("projectmind_doctor", {
+    description: "Diagnose ProjectMind configuration and requirement-binding gaps without executing commands or producing a verdict.",
+    inputSchema: {},
+    annotations: readOnlyAnnotations,
+  }, async () => content(await diagnoseProject(root)));
   server.registerTool("projectmind_get_intent", {
     description: "Read the current or requested intent contract.", inputSchema: { id: z.string().regex(/^PM-\d{4,}$/).optional() }, annotations: readOnlyAnnotations,
   }, async ({ id }) => content(await loadIntent(root, id)));

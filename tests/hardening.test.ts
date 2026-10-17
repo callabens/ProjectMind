@@ -365,10 +365,13 @@ test("real MCP client negotiates stdio, validates inputs, and cannot execute by 
   t.after(() => client.close());
   await client.connect(transport);
   const { tools } = await client.listTools();
-  assert.equal(tools.length, 11);
+  assert.equal(tools.length, 12);
   assert.ok(!tools.some((item) => /mark.*verif/.test(item.name)));
   const context = await client.callTool({ name: "projectmind_get_project_context", arguments: {} });
   assert.equal(context.isError, undefined);
+  const diagnosis = await client.callTool({ name: "projectmind_doctor", arguments: {} });
+  assert.equal(diagnosis.isError, undefined);
+  assert.ok(!JSON.stringify(diagnosis.content).includes('"verdict"'));
   const blocked = await client.callTool({ name: "projectmind_request_verification", arguments: {} });
   assert.equal(blocked.isError, true);
   const invalid = await client.callTool({ name: "projectmind_get_intent", arguments: { id: "../../outside" } });
