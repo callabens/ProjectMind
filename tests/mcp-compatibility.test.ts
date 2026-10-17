@@ -55,6 +55,7 @@ test("generic stdio and Claude-style project-root pilots negotiate and expose th
     "projectmind_get_evidence",
     "projectmind_get_intent",
     "projectmind_get_project_context",
+    "projectmind_get_verification_status",
     "projectmind_record_claim",
     "projectmind_record_decision",
     "projectmind_request_verification",
@@ -126,6 +127,7 @@ test("Streamable HTTP MCP supports authenticated remote clients", async (t) => {
     "projectmind_get_evidence",
     "projectmind_get_intent",
     "projectmind_get_project_context",
+    "projectmind_get_verification_status",
     "projectmind_search_memory",
     "projectmind_suggest_bindings",
   ]);
@@ -136,4 +138,6 @@ test("Streamable HTTP MCP supports authenticated remote clients", async (t) => {
   assert.match(JSON.stringify(diagnosis.content), /UNBOUND_REQUIREMENT/);
   const evidence = await client.callTool({ name: "projectmind_get_evidence", arguments: {} });
   assert.match(JSON.stringify(evidence.content), /NOT_AVAILABLE/);
+  const status = await client.callTool({ name: "projectmind_get_verification_status", arguments: {} });
+  assert.match(JSON.stringify(status.content), /NOT_AVAILABLE/);
 });

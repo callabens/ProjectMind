@@ -67,6 +67,8 @@ Coverage is command-level, not per-testcase. It proves that the bound command ex
 
 Stored ProofPacks are historical artifacts. The CLI does not accept them as current execution evidence. The MCP evidence reader does not refresh a saved verdict.
 
+`projectmind_get_verification_status` validates the latest historical ProofPack and compares its recorded repository fingerprint with the current repository state. It reports `NOT_AVAILABLE`, `INVALID_ARTIFACT`, `STALE`, or `MATCHING_REPOSITORY_STATE`; even the matching state remains a recorded historical verdict and does not execute checks or issue a new verdict.
+
 Claims remain `UNPROVEN` data and are never verification inputs. `claim report` classifies only explicit links as `DECLARED_ONLY`, `EVIDENCE_LINKED`, or `VERIFIED_REQUIREMENT_LINKED`. The strongest level means that every referenced evidence record is passing and belongs to the named verified requirement in the latest historical ProofPack; it does not establish that the free-form claim text is true and never updates a verdict.
 
 ## Trust boundary

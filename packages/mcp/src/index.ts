@@ -13,6 +13,7 @@ import { verifyProject } from "../../verifier/src/project.ts";
 import { recordMemory, searchMemory } from "../../memory/src/index.ts";
 import { getClaimReport, recordClaim } from "../../claims/src/index.ts";
 import { diagnoseProject } from "../../doctor/src/index.ts";
+import { getHistoricalProofStatus } from "../../proofpack/src/index.ts";
 
 export interface McpOptions { allowExecution?: boolean; allowMutations?: boolean; exposeDisabledTools?: boolean; }
 export interface McpHttpOptions extends McpOptions {
@@ -75,6 +76,11 @@ export function createMcpServer(root: string, options: McpOptions = {}): McpServ
       throw error;
     }
   });
+  server.registerTool("projectmind_get_verification_status", {
+    description: "Compare the latest validated historical ProofPack with the current repository state without executing checks or refreshing its recorded verdict.",
+    inputSchema: {},
+    annotations: readOnlyAnnotations,
+  }, async () => content(await getHistoricalProofStatus(root)));
   server.registerTool("projectmind_get_claim_report", {
     description: "Report historical claim-to-evidence link strength. This never proves claim text or updates a verdict.", inputSchema: {}, annotations: readOnlyAnnotations,
   }, async () => content(await getClaimReport(root)));
