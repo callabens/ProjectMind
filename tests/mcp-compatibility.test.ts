@@ -40,7 +40,7 @@ test("generic stdio and Claude-style project-root pilots negotiate and expose th
   });
   t.after(() => client.close());
   await client.connect(transport);
-  assert.deepEqual(client.getServerVersion(), { name: "projectmind", version: "0.1.0-dev.1" });
+  assert.deepEqual(client.getServerVersion(), { name: "projectmind", version: "0.1.0-dev.2" });
   assert.equal(client.getServerCapabilities()?.tools?.listChanged, true);
   const { tools } = await client.listTools();
   assert.deepEqual(tools.map((item) => item.name).sort(), [

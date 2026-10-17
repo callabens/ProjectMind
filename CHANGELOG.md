@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — 0.1.0-dev
+## Unreleased — 0.1.0-dev.2 preview candidate
 
 - Add deterministic `projectmind proof diff` text and JSON output for verdict and requirement transitions between validated ProofPacks.
 - Add validated, filterable `projectmind proof history` output for local ProofPack timelines.
@@ -33,6 +33,6 @@
 - Add Engineering Memory Lite with versioned local decision/constraint/incident records, deterministic ranked retrieval, CLI recall, and a read-only MCP search tool.
 - Document trust limits and scope the roadmap to the v0.3 application candidate.
 
-No stable release has occurred. The first public development preview is available as `@callabens/projectmind@0.1.0-dev.1` on npm.
+No stable release has occurred. The first public development preview remains available as `@callabens/projectmind@0.1.0-dev.1` on npm. The changes above are prepared for the reviewed `0.1.0-dev.2` preview candidate.
 
-The manifest is prepared for the first reviewed `0.1.0-dev.1` preview as `@callabens/projectmind` on the non-default `next` npm tag. This does not mark a stable release.
+The manifest is prepared for `@callabens/projectmind@0.1.0-dev.2` on the non-default `next` npm tag. This does not mark a stable release or claim that the candidate has been published.

@@ -18,6 +18,8 @@ The first public artifact may be a reviewed development preview on the non-defau
 pnpm release:check --channel preview --name @callabens/projectmind
 ```
 
+The current reviewed candidate is `0.1.0-dev.2`. Its scoped release notes are in [releases/0.1.0-dev.2.md](releases/0.1.0-dev.2.md). Preparing or merging the candidate does not publish it; npm authentication and an explicit maintainer action remain required.
+
 Preview versions must use `x.y.z-dev.N`; they never satisfy the stable release gate and must be intentionally published with the `next` tag. npm may also assign `latest` to the first version of a new package; the first stable release must move `latest` to the reviewed stable version.
 
 The stable command intentionally exits with status 2 for a development version or when public/provenance settings differ from policy. `--json` emits a machine-readable blocker report.
