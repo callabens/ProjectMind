@@ -28,3 +28,25 @@ test("PR comment neutralizes mentions, HTML, table injection, and multiline text
 test("PR comment rejects malformed or forged ProofPack shapes", () => {
   assert.throws(() => formatPullRequestComment({ verification: { status: "VERIFIED" } }));
 });
+
+test("PR comment reports regressions against a validated previous ProofPack", async () => {
+  const previous = JSON.parse(await readFile("fixtures/proofpack-v1/valid.json", "utf8"));
+  const current = structuredClone(previous);
+  current.id = "proof_222222222222222222222222";
+  current.verification.status = "NOT_VERIFIED";
+  current.verification.reasons = ["Evidence is stale."];
+  delete current.verification.repositoryState;
+  current.verification.requirements[0].status = "UNVERIFIED";
+  current.verification.requirements[0].evidenceIds = [];
+  const body = formatPullRequestComment(current, previous);
+  assert.match(body, /Change since previous ProofPack/);
+  assert.match(body, /VERIFIED → NOT_VERIFIED/);
+  assert.match(body, /🔻 REGRESSION/);
+  assert.match(body, /REQ-1/);
+});
+
+test("PR comment rejects malformed previous ProofPacks and cross-project comparisons", async () => {
+  const proof = JSON.parse(await readFile("fixtures/proofpack-v1/valid.json", "utf8"));
+  assert.throws(() => formatPullRequestComment(proof, {}));
+  assert.throws(() => formatPullRequestComment(proof, { ...proof, project: "other" }), /different projects/);
+});

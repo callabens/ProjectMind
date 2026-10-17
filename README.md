@@ -129,3 +129,9 @@ Inspect validated local ProofPack history without opening artifact files manuall
 projectmind proof history
 projectmind proof history --intent PM-0001 --limit 10 --json
 ```
+
+Include a bounded regression/improvement table in a safe PR comment by supplying the previous validated artifact:
+
+```bash
+projectmind report pr-comment current.json --previous previous.json
+```
