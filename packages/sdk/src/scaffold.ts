@@ -33,7 +33,7 @@ export async function scaffoldProvider(root: string, name: string, providerId: s
       private: true,
       type: "module",
       scripts: { test: "node --experimental-strip-types --test tests/*.test.ts" },
-      dependencies: { "@callabens/projectmind": "0.1.0-dev.1" },
+      dependencies: { "@callabens/projectmind": "0.1.0-dev.2" },
       engines: { node: ">=22.18" },
     }, null, 2)}\n`,
     "src/index.ts": `import { defineVerificationProvider, PROVIDER_API_VERSION } from "@callabens/projectmind/provider-sdk";\n\nexport const provider = defineVerificationProvider({\n  manifest: {\n    apiVersion: PROVIDER_API_VERSION,\n    id: ${JSON.stringify(providerId)},\n    displayName: ${JSON.stringify(displayName)},\n    version: "0.1.0",\n    capabilities: ["verification-commands"],\n  },\n  commands: () => [{\n    kind: "static",\n    command: "git diff --check",\n    required: false,\n    provider: "generic-command",\n    timeoutMs: 30_000,\n  }],\n});\n`,
