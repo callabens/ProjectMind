@@ -4,6 +4,8 @@ Start `projectmind mcp` from an initialized target repository. During source dev
 
 The process is local and requires no model credentials. Execution is disabled unless the operator supplies `PROJECTMIND_ALLOW_EXECUTION=1` at startup. A client must preserve its normal environment and may either set the child working directory to the repository root or provide `CLAUDE_PROJECT_DIR` as an absolute project root.
 
+Read-only clients can pass a reviewed Git ref such as the target branch SHA to `projectmind_get_changed_symbols` and `projectmind_suggest_bindings`. This includes committed branch or PR changes in impact analysis without enabling command execution or repository mutation.
+
 Run the reusable compatibility pilot with:
 
 ```bash

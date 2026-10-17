@@ -24,8 +24,12 @@ test("generic stdio and Claude-style project-root pilots negotiate and expose th
   await exec("git", ["init", "-q"], { cwd: root });
   await exec("git", ["add", "."], { cwd: root });
   await exec("git", ["-c", "user.name=ProjectMind Pilot", "-c", "user.email=pilot@example.com", "commit", "-qm", "fixture"], { cwd: root });
+  const base = (await exec("git", ["rev-parse", "HEAD"], { cwd: root })).stdout.trim();
   await initializeProject(root);
   await createIntent(root, "MCP compatibility", ["Safe context is readable"], [], []);
+  await writeFile(join(root, "src", "index.ts"), "export const value = 2;\n");
+  await exec("git", ["add", "src/index.ts"], { cwd: root });
+  await exec("git", ["-c", "user.name=ProjectMind Pilot", "-c", "user.email=pilot@example.com", "commit", "-qm", "committed change"], { cwd: root });
 
   const client = new Client({ name: "generic-mcp-pilot", version: "1.0.0" });
   const transport = new StdioClientTransport({
@@ -65,6 +69,8 @@ test("generic stdio and Claude-style project-root pilots negotiate and expose th
   assert.match(JSON.stringify(diagnosis.content), /UNBOUND_REQUIREMENT/);
   const intent = await client.callTool({ name: "projectmind_get_intent", arguments: {} });
   assert.match(JSON.stringify(intent.content), /MCP compatibility/);
+  const changes = await client.callTool({ name: "projectmind_get_changed_symbols", arguments: { base } });
+  assert.match(JSON.stringify(changes.content), /src\/index\.ts/);
   const blocked = await client.callTool({ name: "projectmind_request_verification", arguments: {} });
   assert.equal(blocked.isError, true);
   await client.callTool({ name: "projectmind_record_decision", arguments: { text: "Keep MCP execution disabled by default" } });
