@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { isAbsolute, join, resolve } from "node:path";
 import { readFile, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { initializeProject, loadConfig } from "../../../packages/core/src/project.ts";
 import { buildMindGraph, persistMindGraph } from "../../../packages/graph/src/index.ts";
 import { createIntent, bindRequirement, suggestRequirementBindings } from "../../../packages/intent/src/index.ts";
@@ -49,7 +50,7 @@ function optionValues(args: ParsedArgs, key: string): string[] {
 }
 
 function help(): string {
-  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  doctor [--json]\n  scan\n  changes\n  intent templates [--json]\n  intent create [title] [--template <id>] [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--covers <source-path>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  proof validate <proof.json> [--json]\n  proof diff <before.json> <after.json> [--json]\n  proof history [--intent <id>] [--limit <1-100>] [--json]\n  provider scaffold <name> --id <reverse-domain-id> [--directory <path>]\n  report pr-comment [proof-path] [--previous <proof-path>] [--output <path>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
+  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  quickstart --template <id> [--title <title>]\n  doctor [--json]\n  scan\n  changes\n  intent templates [--json]\n  intent create [title] [--template <id>] [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--covers <source-path>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  proof validate <proof.json> [--json]\n  proof diff <before.json> <after.json> [--json]\n  proof history [--intent <id>] [--limit <1-100>] [--json]\n  provider scaffold <name> --id <reverse-domain-id> [--directory <path>]\n  report pr-comment [proof-path] [--previous <proof-path>] [--output <path>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
 }
 
 async function main(): Promise<void> {
@@ -67,6 +68,27 @@ async function main(): Promise<void> {
     const graph = await buildMindGraph(root, config);
     await persistMindGraph(root, graph);
     console.log(formatInit(config, graph));
+    return;
+  }
+
+  if (command === "quickstart") {
+    const templateId = optionValues(args, "template")[0];
+    if (!templateId) throw new Error("Usage: projectmind quickstart --template <id> [--title <title>]");
+    if (!listIntentTemplates().some((template) => template.id === templateId)) throw new Error(`Unknown intent template: ${templateId}`);
+    if (existsSync(join(root, ".projectmind", "current-intent.json"))) throw new Error("Quickstart will not replace an existing active intent. Use intent create explicitly.");
+    const config = await initializeProject(root);
+    const graph = await buildMindGraph(root, config);
+    await persistMindGraph(root, graph);
+    const title = optionValues(args, "title")[0];
+    const intent = await createIntentFromTemplate(root, templateId, { ...(title ? { title } : {}) });
+    console.log([
+      formatInit(config, graph),
+      "",
+      formatIntent(intent),
+      "",
+      "No verification commands were executed.",
+      "Next: review .projectmind/config.json, then run projectmind intent suggest.",
+    ].join("\n"));
     return;
   }
 

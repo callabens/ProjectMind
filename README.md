@@ -60,6 +60,14 @@ projectmind --help
 
 Run the source CLI by absolute path from the root of a trusted Git repository with at least one commit. `init` detects package scripts but does not execute them.
 
+For a non-executing guided start, initialize, scan and create a reviewed template intent in one command:
+
+```bash
+projectmind quickstart --template api-contract --title "Keep payments API compatible"
+```
+
+Quickstart never runs project commands and refuses to replace an existing active intent.
+
 ```bash
 node /path/to/ProjectMind/apps/cli/src/index.ts init
 node /path/to/ProjectMind/apps/cli/src/index.ts intent templates
