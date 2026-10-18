@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { delimiter, dirname, isAbsolute, join, resolve } from "node:path";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -121,6 +121,18 @@ interface IntegrationCheck {
   issues: Array<{ code: string; message: string }>;
 }
 
+function resolveExecutable(command: string): string | undefined {
+  if (isAbsolute(command) || command.includes("/") || command.includes("\\\\")) return existsSync(command) ? command : undefined;
+  const extensions = process.platform === "win32" ? (process.env.PATHEXT ?? ".COM;.EXE;.BAT;.CMD").split(";") : [""];
+  for (const directory of (process.env.PATH ?? "").split(delimiter).filter(Boolean)) {
+    for (const extension of extensions) {
+      const candidate = join(directory, process.platform === "win32" ? `${command}${extension.toLowerCase()}` : command);
+      if (existsSync(candidate)) return candidate;
+    }
+  }
+  return undefined;
+}
+
 async function checkIntegration(root: string, client: Exclude<IntegrationClient, "generic">): Promise<IntegrationCheck> {
   const relativePath = client === "claude-code" ? ".mcp.json" : client === "codex" ? join(".codex", "config.toml") : client === "cursor" ? join(".cursor", "mcp.json") : join(".vscode", "mcp.json");
   const path = join(root, relativePath);
@@ -161,6 +173,7 @@ async function checkIntegration(root: string, client: Exclude<IntegrationClient,
       if (!env || typeof env !== "object" || Array.isArray(env) || (env as Record<string, unknown>).PROJECTMIND_ALLOW_EXECUTION !== "0") issues.push({ code: "EXECUTION_NOT_DISABLED", message: "PROJECTMIND_ALLOW_EXECUTION must be \"0\" for the safe default." });
     }
   }
+  if (!resolveExecutable("projectmind")) issues.push({ code: "COMMAND_NOT_FOUND", message: "The projectmind command is not available on PATH. Install @callabens/projectmind globally or fix the configured command." });
   return { client, path: relativePath, status: issues.length === 0 ? "READY" : "NEEDS_ATTENTION", issues };
 }
 
