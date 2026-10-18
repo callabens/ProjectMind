@@ -11,7 +11,7 @@ try {
   if (typeof packageName !== 'string' || packageName.length === 0) throw new Error('Packed package has no name');
   execFileSync('npm', ['install', '--omit=dev', '--ignore-scripts', '--no-package-lock', '--no-audit', '--no-fund'], { cwd: pkgRoot, stdio: 'inherit' });
   const help = execFileSync(process.execPath, ['dist/apps/cli/src/index.js', '--help'], { cwd: pkgRoot, encoding: 'utf8' });
-  if (!help.includes('intent bind')) throw new Error('Packaged CLI is incomplete');
+  if (!help.includes('intent bind') || !help.includes('demo [--pace <ms>] [--keep]')) throw new Error('Packaged CLI is incomplete');
   execFileSync(process.execPath, ['--input-type=module', '--eval', `
     import { PROVIDER_API_VERSION, resolveProviderCommands } from ${JSON.stringify(packageName + '/provider-sdk')};
     import { gitDiffCheckProvider } from ${JSON.stringify(packageName + '/provider-examples/git-diff-check')};
@@ -31,6 +31,8 @@ try {
   execFileSync('git', ['add', '.'], { cwd: target });
   execFileSync('git', ['-c', 'user.name=Package Test', '-c', 'user.email=test@example.com', 'commit', '-qm', 'consumer'], { cwd: target });
   const run = (...args) => execFileSync(process.execPath, [join(pkgRoot, 'dist/apps/cli/src/index.js'), ...args], { cwd: target, encoding: 'utf8' });
+  const demo = run('demo');
+  if (!demo.includes('Observed: NOT_VERIFIED -> VERIFIED -> NOT_VERIFIED')) throw new Error('Packaged demo failed');
   run('init');
   run('intent', 'create', 'Login contract', '--require', 'Login succeeds');
   run('intent', 'bind', 'REQ-1', '--command', 'node --test --test-reporter=junit auth.test.js', '--test', 'login');
