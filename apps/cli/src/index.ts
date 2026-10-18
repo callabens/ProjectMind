@@ -52,7 +52,7 @@ function optionValues(args: ParsedArgs, key: string): string[] {
 }
 
 function help(): string {
-  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  quickstart --template <id> [--title <title>]\n  demo [--pace <ms>] [--keep]\n  doctor [--json]\n  scan\n  changes\n  integration init <claude-code|codex|cursor|vscode>\n  integration config <claude-code|codex|cursor|vscode|generic> [--json]\n  intent templates [--json]\n  intent create [title] [--template <id>] [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--covers <source-path>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--base <git-ref>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  proof status [--json]\n  proof feedback [--json]\n  proof validate <proof.json> [--json]\n  proof diff <before.json> <after.json> [--json]\n  proof history [--intent <id>] [--limit <1-100>] [--json]\n  provider scaffold <name> --id <reverse-domain-id> [--directory <path>]\n  report pr-comment [proof-path] [--previous <proof-path>] [--output <path>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
+  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  quickstart --template <id> [--title <title>]\n  demo [--pace <ms>] [--keep]\n  doctor [--json]\n  scan\n  changes\n  integration init <claude-code|codex|cursor|vscode>\n  integration check <claude-code|codex|cursor|vscode> [--json]\n  integration config <claude-code|codex|cursor|vscode|generic> [--json]\n  intent templates [--json]\n  intent create [title] [--template <id>] [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--covers <source-path>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--base <git-ref>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  proof status [--json]\n  proof feedback [--json]\n  proof validate <proof.json> [--json]\n  proof diff <before.json> <after.json> [--json]\n  proof history [--intent <id>] [--limit <1-100>] [--json]\n  provider scaffold <name> --id <reverse-domain-id> [--directory <path>]\n  report pr-comment [proof-path] [--previous <proof-path>] [--output <path>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
 }
 
 type IntegrationClient = "claude-code" | "codex" | "cursor" | "vscode" | "generic";
@@ -112,6 +112,56 @@ async function installIntegration(root: string, client: Exclude<IntegrationClien
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, `${JSON.stringify({ ...document, [serversKey]: servers }, null, 2)}\n`, "utf8");
   return relativePath;
+}
+
+interface IntegrationCheck {
+  client: Exclude<IntegrationClient, "generic">;
+  path: string;
+  status: "READY" | "NEEDS_ATTENTION";
+  issues: Array<{ code: string; message: string }>;
+}
+
+async function checkIntegration(root: string, client: Exclude<IntegrationClient, "generic">): Promise<IntegrationCheck> {
+  const relativePath = client === "claude-code" ? ".mcp.json" : client === "codex" ? join(".codex", "config.toml") : client === "cursor" ? join(".cursor", "mcp.json") : join(".vscode", "mcp.json");
+  const path = join(root, relativePath);
+  const issues: IntegrationCheck["issues"] = [];
+  if (!existsSync(path)) {
+    issues.push({ code: "CONFIG_MISSING", message: `${relativePath} does not exist. Run projectmind integration init ${client}.` });
+    return { client, path: relativePath, status: "NEEDS_ATTENTION", issues };
+  }
+  if (client === "codex") {
+    const source = await readFile(path, "utf8");
+    const table = source.match(/^\s*\[\s*mcp_servers\s*\.\s*["']?projectmind["']?\s*\]\s*$([\s\S]*?)(?=^\s*\[|$(?![\s\S]))/m)?.[1] ?? "";
+    if (!table) issues.push({ code: "SERVER_MISSING", message: "mcp_servers.projectmind is not configured." });
+    else {
+      if (!/^\s*command\s*=\s*"projectmind"\s*$/m.test(table)) issues.push({ code: "COMMAND_MISMATCH", message: "ProjectMind must launch with command = \"projectmind\"." });
+      if (!/^\s*args\s*=\s*\[\s*"mcp"\s*\]\s*$/m.test(table)) issues.push({ code: "ARGS_MISMATCH", message: "ProjectMind must launch with args = [\"mcp\"]." });
+      if (!/PROJECTMIND_ALLOW_EXECUTION\s*=\s*"0"/.test(table)) issues.push({ code: "EXECUTION_NOT_DISABLED", message: "PROJECTMIND_ALLOW_EXECUTION must be \"0\" for the safe default." });
+    }
+  } else {
+    let document: Record<string, unknown>;
+    try {
+      const parsed = JSON.parse(await readFile(path, "utf8")) as unknown;
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("top level is not an object");
+      document = parsed as Record<string, unknown>;
+    } catch {
+      issues.push({ code: "CONFIG_INVALID", message: `${relativePath} is not a valid JSON object.` });
+      return { client, path: relativePath, status: "NEEDS_ATTENTION", issues };
+    }
+    const serversKey = client === "vscode" ? "servers" : "mcpServers";
+    const servers = document[serversKey];
+    const entry = servers && typeof servers === "object" && !Array.isArray(servers) ? (servers as Record<string, unknown>).projectmind : undefined;
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) issues.push({ code: "SERVER_MISSING", message: `${serversKey}.projectmind is not configured.` });
+    else {
+      const server = entry as Record<string, unknown>;
+      if (server.type !== "stdio") issues.push({ code: "TRANSPORT_MISMATCH", message: "ProjectMind must use the stdio transport." });
+      if (server.command !== "projectmind") issues.push({ code: "COMMAND_MISMATCH", message: "ProjectMind must launch with the projectmind command." });
+      if (!Array.isArray(server.args) || server.args.length !== 1 || server.args[0] !== "mcp") issues.push({ code: "ARGS_MISMATCH", message: "ProjectMind must launch with the single mcp argument." });
+      const env = server.env;
+      if (!env || typeof env !== "object" || Array.isArray(env) || (env as Record<string, unknown>).PROJECTMIND_ALLOW_EXECUTION !== "0") issues.push({ code: "EXECUTION_NOT_DISABLED", message: "PROJECTMIND_ALLOW_EXECUTION must be \"0\" for the safe default." });
+    }
+  }
+  return { client, path: relativePath, status: issues.length === 0 ? "READY" : "NEEDS_ATTENTION", issues };
 }
 
 async function main(): Promise<void> {
@@ -174,6 +224,16 @@ async function main(): Promise<void> {
       "",
       ...(report.diagnostics.length ? report.diagnostics.map((item) => `${item.severity.toUpperCase()} ${item.code}: ${item.message}${item.remedy ? `\n  ${item.remedy}` : ""}`) : ["No configuration or binding problems found."]),
     ].join("\n"));
+    if (report.status !== "READY") process.exitCode = 2;
+    return;
+  }
+
+  if (command === "integration" && subcommand === "check") {
+    const client = rest[0];
+    if (client !== "claude-code" && client !== "codex" && client !== "cursor" && client !== "vscode") throw new Error("Usage: projectmind integration check <claude-code|codex|cursor|vscode> [--json]");
+    const report = await checkIntegration(root, client);
+    if (args.options.has("json")) console.log(JSON.stringify(report, null, 2));
+    else console.log([`Integration ${client}: ${report.status}`, `Config: ${report.path}`, ...(report.issues.length ? ["", ...report.issues.map((issue) => `${issue.code}: ${issue.message}`)] : ["Safe project-scoped MCP configuration is present."] )].join("\n"));
     if (report.status !== "READY") process.exitCode = 2;
     return;
   }

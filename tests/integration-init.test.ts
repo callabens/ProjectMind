@@ -92,3 +92,30 @@ test("VS Code integration uses the project servers format and preserves settings
   assert.deepEqual(config.inputs, []);
   await assert.rejects(run(root, ["integration", "init", "vscode"]), /already defines/);
 });
+
+
+test("integration check validates safe configuration and fails closed on drift", async () => {
+  const root = await mkdtemp(join(tmpdir(), "projectmind-integration-"));
+  await run(root, ["integration", "init", "vscode"]);
+  const ready = await run(root, ["integration", "check", "vscode", "--json"]);
+  assert.deepEqual(JSON.parse(ready.stdout), {
+    client: "vscode",
+    path: ".vscode/mcp.json",
+    status: "READY",
+    issues: [],
+  });
+  const configPath = join(root, ".vscode/mcp.json");
+  const config = JSON.parse(await readFile(configPath, "utf8"));
+  config.servers.projectmind.env.PROJECTMIND_ALLOW_EXECUTION = "1";
+  await writeFile(configPath, JSON.stringify(config));
+  try {
+    await run(root, ["integration", "check", "vscode", "--json"]);
+    assert.fail("unsafe integration check should fail");
+  } catch (error) {
+    const result = error as { code: number; stdout: string };
+    assert.equal(result.code, 2);
+    const report = JSON.parse(result.stdout);
+    assert.equal(report.status, "NEEDS_ATTENTION");
+    assert.deepEqual(report.issues.map((issue: { code: string }) => issue.code), ["EXECUTION_NOT_DISABLED"]);
+  }
+});
