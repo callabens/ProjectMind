@@ -142,6 +142,22 @@ export async function listProofPackHistory(
   return options.limit === undefined ? filtered : filtered.slice(0, options.limit);
 }
 
+export async function diffProofPackHistory(root: string, beforeProofId: string, afterProofId: string): Promise<ProofPackDiff> {
+  const history = await listProofPackHistory(root);
+  const select = (proofId: string): ProofPackHistoryEntry => {
+    const matches = history.filter((entry) => entry.proofId === proofId);
+    if (matches.length === 0) throw new Error(`Historical ProofPack not found: ${proofId}`);
+    if (matches.length > 1) throw new Error(`Historical ProofPack id is ambiguous: ${proofId}`);
+    return matches[0]!;
+  };
+  const before = select(beforeProofId);
+  const after = select(afterProofId);
+  return diffProofPacks(
+    JSON.parse(await readFile(before.path, "utf8")),
+    JSON.parse(await readFile(after.path, "utf8")),
+  );
+}
+
 export async function createProofPack(
   root: string,
   projectName: string,

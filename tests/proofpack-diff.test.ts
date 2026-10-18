@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { diffProofPacks, listProofPackHistory } from "../packages/proofpack/src/index.ts";
+import { diffProofPackHistory, diffProofPacks, listProofPackHistory } from "../packages/proofpack/src/index.ts";
 
 async function fixture(): Promise<Record<string, any>> {
   return JSON.parse(await readFile(new URL("../fixtures/proofpack-v1/valid.json", import.meta.url), "utf8"));
@@ -58,6 +58,10 @@ test("ProofPack history validates, sorts, filters, and limits artifacts", async 
   const all = await listProofPackHistory(root);
   assert.deepEqual(all.map((entry) => entry.proofId), [newer.id, older.id]);
   assert.deepEqual((await listProofPackHistory(root, { intentId: "PM-0001", limit: 1 })).map((entry) => entry.proofId), [older.id]);
+  const diff = await diffProofPackHistory(root, older.id, newer.id);
+  assert.equal(diff.before.proofId, older.id);
+  assert.equal(diff.after.proofId, newer.id);
+  await assert.rejects(diffProofPackHistory(root, "proof_333333333333333333333333", newer.id), /not found/);
 });
 
 test("ProofPack history returns empty for a new project and rejects malformed artifacts", async () => {
