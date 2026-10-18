@@ -13,7 +13,7 @@ import { verifyProject } from "../../verifier/src/project.ts";
 import { recordMemory, searchMemory } from "../../memory/src/index.ts";
 import { getClaimReport, recordClaim } from "../../claims/src/index.ts";
 import { diagnoseProject } from "../../doctor/src/index.ts";
-import { getHistoricalProofStatus, listProofPackHistory } from "../../proofpack/src/index.ts";
+import { diffProofPackHistory, getHistoricalProofStatus, listProofPackHistory } from "../../proofpack/src/index.ts";
 
 export interface McpOptions { allowExecution?: boolean; allowMutations?: boolean; exposeDisabledTools?: boolean; }
 export interface McpHttpOptions extends McpOptions {
@@ -88,10 +88,18 @@ export function createMcpServer(root: string, options: McpOptions = {}): McpServ
       limit: z.number().int().min(1).max(100).optional(),
     },
     annotations: readOnlyAnnotations,
-  }, async ({ intentId, limit }) => content(await listProofPackHistory(root, {
+  }, async ({ intentId, limit }) => content((await listProofPackHistory(root, {
     ...(intentId ? { intentId } : {}),
     ...(limit === undefined ? {} : { limit }),
-  })));
+  })).map(({ path: _path, ...entry }) => entry)));
+  server.registerTool("projectmind_diff_proof_history", {
+    description: "Compare two validated historical ProofPacks by id from ProjectMind's managed proof directory without executing checks or refreshing a verdict.",
+    inputSchema: {
+      beforeProofId: z.string().regex(/^proof_[a-f0-9]{24}$/),
+      afterProofId: z.string().regex(/^proof_[a-f0-9]{24}$/),
+    },
+    annotations: readOnlyAnnotations,
+  }, async ({ beforeProofId, afterProofId }) => content(await diffProofPackHistory(root, beforeProofId, afterProofId)));
   server.registerTool("projectmind_get_claim_report", {
     description: "Report historical claim-to-evidence link strength. This never proves claim text or updates a verdict.", inputSchema: {}, annotations: readOnlyAnnotations,
   }, async () => content(await getClaimReport(root)));

@@ -48,6 +48,7 @@ test("generic stdio and Claude-style project-root pilots negotiate and expose th
   assert.equal(client.getServerCapabilities()?.tools?.listChanged, true);
   const { tools } = await client.listTools();
   assert.deepEqual(tools.map((item) => item.name).sort(), [
+    "projectmind_diff_proof_history",
     "projectmind_doctor",
     "projectmind_get_changed_symbols",
     "projectmind_get_claim_report",
@@ -77,6 +78,11 @@ test("generic stdio and Claude-style project-root pilots negotiate and expose th
   assert.deepEqual(JSON.parse((history as { content: Array<{ text: string }> }).content[0]!.text), []);
   const invalidHistory = await client.callTool({ name: "projectmind_list_proof_history", arguments: { limit: 0 } });
   assert.equal(invalidHistory.isError, true);
+  const missingDiff = await client.callTool({ name: "projectmind_diff_proof_history", arguments: {
+    beforeProofId: "proof_111111111111111111111111",
+    afterProofId: "proof_222222222222222222222222",
+  } });
+  assert.equal(missingDiff.isError, true);
   const blocked = await client.callTool({ name: "projectmind_request_verification", arguments: {} });
   assert.equal(blocked.isError, true);
   await client.callTool({ name: "projectmind_record_decision", arguments: { text: "Keep MCP execution disabled by default" } });
@@ -125,6 +131,7 @@ test("Streamable HTTP MCP supports authenticated remote clients", async (t) => {
   await client.connect(transport as unknown as Parameters<Client["connect"]>[0]);
   const { tools } = await client.listTools();
   assert.deepEqual(tools.map((item) => item.name).sort(), [
+    "projectmind_diff_proof_history",
     "projectmind_doctor",
     "projectmind_get_changed_symbols",
     "projectmind_get_claim_report",
