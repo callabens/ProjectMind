@@ -41,6 +41,20 @@ export type HistoricalProofStatus =
   | { status: "INVALID_ARTIFACT"; reason: string }
   | { status: "MATCHING_REPOSITORY_STATE" | "STALE"; proofId: string; createdAt: string; intentId: string; recordedVerdict: VerificationResult["status"]; recordedRepositoryState: string; currentRepositoryState: string };
 
+export type HistoricalVerificationFeedback =
+  | { status: "NOT_AVAILABLE"; reason: string; nextAction: string }
+  | { status: "INVALID_ARTIFACT"; reason: string; nextAction: string }
+  | {
+    status: "MATCHING_REPOSITORY_STATE" | "STALE";
+    proofId: string;
+    intentId: string;
+    recordedVerdict: VerificationResult["status"];
+    reasons: string[];
+    requirements: Array<{ requirementId: string; statement: string; status: "VERIFIED" | "UNVERIFIED" | "FAILED"; evidenceIds: string[] }>;
+    requiredCommands: VerificationResult["requiredCommandResults"];
+    nextAction: string;
+  };
+
 export function validateProofPack(value: unknown): ProofPack {
   return proofPackSchema.parse(value) as ProofPack;
 }
@@ -70,6 +84,35 @@ export async function getHistoricalProofStatus(root: string): Promise<Historical
     recordedVerdict: proof.verification.status,
     recordedRepositoryState,
     currentRepositoryState,
+  };
+}
+
+export async function getHistoricalVerificationFeedback(root: string): Promise<HistoricalVerificationFeedback> {
+  const freshness = await getHistoricalProofStatus(root);
+  if (freshness.status === "NOT_AVAILABLE") return { ...freshness, nextAction: "Run a reviewed verification workflow to generate the first ProofPack." };
+  if (freshness.status === "INVALID_ARTIFACT") return { ...freshness, nextAction: "Discard or repair the invalid artifact, then run fresh verification." };
+  const proof = validateProofPack(await readJson(join(projectMindDir(root), "latest-proof.json")));
+  const statements = new Map(proof.intent.requirements.map((item) => [item.id, item.statement]));
+  const requirements = proof.verification.requirements.map((item) => ({
+    requirementId: item.requirementId,
+    statement: statements.get(item.requirementId) ?? item.requirementId,
+    status: item.status,
+    evidenceIds: item.evidenceIds,
+  }));
+  const nextAction = freshness.status === "STALE"
+    ? "Repository state changed after this ProofPack; run fresh verification before acting on its recorded verdict."
+    : proof.verification.status === "VERIFIED"
+      ? "No remediation is recorded for this repository state."
+      : "Address the reported requirement or command failures, then request fresh verification.";
+  return {
+    status: freshness.status,
+    proofId: proof.id,
+    intentId: proof.intent.id,
+    recordedVerdict: proof.verification.status,
+    reasons: proof.verification.reasons,
+    requirements,
+    requiredCommands: proof.verification.requiredCommandResults,
+    nextAction,
   };
 }
 

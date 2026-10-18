@@ -56,6 +56,7 @@ test("generic stdio and Claude-style project-root pilots negotiate and expose th
     "projectmind_get_evidence",
     "projectmind_get_intent",
     "projectmind_get_project_context",
+    "projectmind_get_verification_feedback",
     "projectmind_get_verification_status",
     "projectmind_list_proof_history",
     "projectmind_record_claim",
@@ -83,6 +84,8 @@ test("generic stdio and Claude-style project-root pilots negotiate and expose th
     afterProofId: "proof_222222222222222222222222",
   } });
   assert.equal(missingDiff.isError, true);
+  const feedback = await client.callTool({ name: "projectmind_get_verification_feedback", arguments: {} });
+  assert.match(JSON.stringify(feedback.content), /first ProofPack/);
   const blocked = await client.callTool({ name: "projectmind_request_verification", arguments: {} });
   assert.equal(blocked.isError, true);
   await client.callTool({ name: "projectmind_record_decision", arguments: { text: "Keep MCP execution disabled by default" } });
@@ -139,6 +142,7 @@ test("Streamable HTTP MCP supports authenticated remote clients", async (t) => {
     "projectmind_get_evidence",
     "projectmind_get_intent",
     "projectmind_get_project_context",
+    "projectmind_get_verification_feedback",
     "projectmind_get_verification_status",
     "projectmind_list_proof_history",
     "projectmind_search_memory",
@@ -153,6 +157,8 @@ test("Streamable HTTP MCP supports authenticated remote clients", async (t) => {
   assert.match(JSON.stringify(evidence.content), /NOT_AVAILABLE/);
   const status = await client.callTool({ name: "projectmind_get_verification_status", arguments: {} });
   assert.match(JSON.stringify(status.content), /NOT_AVAILABLE/);
+  const feedback = await client.callTool({ name: "projectmind_get_verification_feedback", arguments: {} });
+  assert.match(JSON.stringify(feedback.content), /first ProofPack/);
   const history = await client.callTool({ name: "projectmind_list_proof_history", arguments: {} });
   assert.deepEqual(JSON.parse((history as { content: Array<{ text: string }> }).content[0]!.text), []);
 });
