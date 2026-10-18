@@ -100,6 +100,8 @@ Free-form claims can carry explicit evidence, intent, and requirement links. `pr
 - [Codex setup](integrations/codex/README.md)
 - [Cursor setup](integrations/cursor/README.md)
 - [VS Code / GitHub Copilot setup](integrations/vscode/README.md)
+
+Validate any generated client configuration without launching it: `projectmind integration check <claude-code|codex|cursor|vscode>`. The check fails closed on missing, malformed, drifted, or execution-enabled settings.
 - [Online MCP / Claude custom connector](docs/ONLINE_MCP.md)
 - [Generic MCP setup](integrations/generic-mcp/README.md)
 - [GitHub Action setup](integrations/github-action/README.md)
