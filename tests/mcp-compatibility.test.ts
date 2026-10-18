@@ -56,6 +56,7 @@ test("generic stdio and Claude-style project-root pilots negotiate and expose th
     "projectmind_get_intent",
     "projectmind_get_project_context",
     "projectmind_get_verification_status",
+    "projectmind_list_proof_history",
     "projectmind_record_claim",
     "projectmind_record_decision",
     "projectmind_request_verification",
@@ -72,6 +73,10 @@ test("generic stdio and Claude-style project-root pilots negotiate and expose th
   assert.match(JSON.stringify(intent.content), /MCP compatibility/);
   const changes = await client.callTool({ name: "projectmind_get_changed_symbols", arguments: { base } });
   assert.match(JSON.stringify(changes.content), /src\/index\.ts/);
+  const history = await client.callTool({ name: "projectmind_list_proof_history", arguments: { intentId: "PM-0001", limit: 10 } });
+  assert.deepEqual(JSON.parse((history as { content: Array<{ text: string }> }).content[0]!.text), []);
+  const invalidHistory = await client.callTool({ name: "projectmind_list_proof_history", arguments: { limit: 0 } });
+  assert.equal(invalidHistory.isError, true);
   const blocked = await client.callTool({ name: "projectmind_request_verification", arguments: {} });
   assert.equal(blocked.isError, true);
   await client.callTool({ name: "projectmind_record_decision", arguments: { text: "Keep MCP execution disabled by default" } });
@@ -128,6 +133,7 @@ test("Streamable HTTP MCP supports authenticated remote clients", async (t) => {
     "projectmind_get_intent",
     "projectmind_get_project_context",
     "projectmind_get_verification_status",
+    "projectmind_list_proof_history",
     "projectmind_search_memory",
     "projectmind_suggest_bindings",
   ]);
@@ -140,4 +146,6 @@ test("Streamable HTTP MCP supports authenticated remote clients", async (t) => {
   assert.match(JSON.stringify(evidence.content), /NOT_AVAILABLE/);
   const status = await client.callTool({ name: "projectmind_get_verification_status", arguments: {} });
   assert.match(JSON.stringify(status.content), /NOT_AVAILABLE/);
+  const history = await client.callTool({ name: "projectmind_list_proof_history", arguments: {} });
+  assert.deepEqual(JSON.parse((history as { content: Array<{ text: string }> }).content[0]!.text), []);
 });
