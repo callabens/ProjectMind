@@ -50,10 +50,16 @@ function optionValues(args: ParsedArgs, key: string): string[] {
 }
 
 function help(): string {
-  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  quickstart --template <id> [--title <title>]\n  doctor [--json]\n  scan\n  changes\n  integration init <claude-code|cursor>\n  integration config <claude-code|cursor|generic> [--json]\n  intent templates [--json]\n  intent create [title] [--template <id>] [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--covers <source-path>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--base <git-ref>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  proof status [--json]\n  proof feedback [--json]\n  proof validate <proof.json> [--json]\n  proof diff <before.json> <after.json> [--json]\n  proof history [--intent <id>] [--limit <1-100>] [--json]\n  provider scaffold <name> --id <reverse-domain-id> [--directory <path>]\n  report pr-comment [proof-path] [--previous <proof-path>] [--output <path>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
+  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  quickstart --template <id> [--title <title>]\n  doctor [--json]\n  scan\n  changes\n  integration init <claude-code|codex|cursor>\n  integration config <claude-code|codex|cursor|generic> [--json]\n  intent templates [--json]\n  intent create [title] [--template <id>] [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--covers <source-path>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--base <git-ref>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  proof status [--json]\n  proof feedback [--json]\n  proof validate <proof.json> [--json]\n  proof diff <before.json> <after.json> [--json]\n  proof history [--intent <id>] [--limit <1-100>] [--json]\n  provider scaffold <name> --id <reverse-domain-id> [--directory <path>]\n  report pr-comment [proof-path] [--previous <proof-path>] [--output <path>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
 }
 
-type IntegrationClient = "claude-code" | "cursor" | "generic";
+type IntegrationClient = "claude-code" | "codex" | "cursor" | "generic";
+
+const CODEX_INTEGRATION_TOML = `[mcp_servers.projectmind]
+command = "projectmind"
+args = ["mcp"]
+env = { PROJECTMIND_ALLOW_EXECUTION = "0" }
+`;
 
 function integrationServer(client: IntegrationClient): Record<string, unknown> {
   return {
@@ -70,6 +76,21 @@ function integrationConfig(client: IntegrationClient): { mcpServers: { projectmi
 }
 
 async function installIntegration(root: string, client: Exclude<IntegrationClient, "generic">): Promise<string> {
+  if (client === "codex") {
+    const relativePath = join(".codex", "config.toml");
+    const path = join(root, relativePath);
+    let existing = "";
+    if (existsSync(path)) {
+      existing = await readFile(path, "utf8");
+      if (/^\s*\[\s*mcp_servers\s*\.\s*["']?projectmind["']?\s*\]\s*$/m.test(existing)) {
+        throw new Error(`${relativePath} already defines mcp_servers.projectmind; review it manually.`);
+      }
+    }
+    const separator = existing.length === 0 || existing.endsWith("\n\n") ? "" : existing.endsWith("\n") ? "\n" : "\n\n";
+    await mkdir(dirname(path), { recursive: true });
+    await writeFile(path, `${existing}${separator}${CODEX_INTEGRATION_TOML}`, "utf8");
+    return relativePath;
+  }
   const relativePath = client === "claude-code" ? ".mcp.json" : join(".cursor", "mcp.json");
   const path = join(root, relativePath);
   let document: Record<string, unknown> = {};
@@ -145,7 +166,11 @@ async function main(): Promise<void> {
 
   if (command === "integration" && subcommand === "config") {
     const client = rest[0];
-    if (client !== "claude-code" && client !== "cursor" && client !== "generic") throw new Error("Usage: projectmind integration config <claude-code|cursor|generic> [--json]");
+    if (client !== "claude-code" && client !== "codex" && client !== "cursor" && client !== "generic") throw new Error("Usage: projectmind integration config <claude-code|codex|cursor|generic> [--json]");
+    if (client === "codex") {
+      console.log(args.options.has("json") ? JSON.stringify({ path: ".codex/config.toml", content: CODEX_INTEGRATION_TOML }) : CODEX_INTEGRATION_TOML.trimEnd());
+      return;
+    }
     const config = integrationConfig(client);
     console.log(args.options.has("json") ? JSON.stringify(config) : JSON.stringify(config, null, 2));
     return;
@@ -153,7 +178,7 @@ async function main(): Promise<void> {
 
   if (command === "integration" && subcommand === "init") {
     const client = rest[0];
-    if (client !== "claude-code" && client !== "cursor") throw new Error("Usage: projectmind integration init <claude-code|cursor>");
+    if (client !== "claude-code" && client !== "codex" && client !== "cursor") throw new Error("Usage: projectmind integration init <claude-code|codex|cursor>");
     const path = await installIntegration(root, client);
     console.log(`Configured ProjectMind for ${client} in ${path}. Execution remains disabled.`);
     return;
