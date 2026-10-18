@@ -106,7 +106,7 @@ Free-form claims can carry explicit evidence, intent, and requirement links. `pr
 - [Provider SDK v1](docs/PROVIDERS.md)
 - [Engineering Memory Lite](docs/MEMORY.md)
 
-The MCP server exposes `projectmind_request_verification`, never a status-setting tool. Execution requires an operator to enable `PROJECTMIND_ALLOW_EXECUTION=1` at server startup. The HTTP transport is read-only by default and requires a bearer token before remote execution or repository mutations can be enabled.
+Use `projectmind_get_overview` as the first read-only MCP call when an agent needs the project, active intent, and historical verification state together. The MCP server exposes `projectmind_request_verification`, never a status-setting tool. Execution requires an operator to enable `PROJECTMIND_ALLOW_EXECUTION=1` at server startup. The HTTP transport is read-only by default and requires a bearer token before remote execution or repository mutations can be enabled.
 
 ## Self-hosted pilot
 
