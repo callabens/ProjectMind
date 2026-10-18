@@ -15,7 +15,7 @@ import { getClaimReport, recordClaim } from "../../../packages/claims/src/index.
 import { PROJECTMIND_VERSION } from "../../../packages/core/src/index.ts";
 import { diagnoseProject } from "../../../packages/doctor/src/index.ts";
 import { formatPullRequestComment } from "../../../packages/report/src/pr-comment.ts";
-import { diffProofPacks, getHistoricalProofStatus, listProofPackHistory, validateProofPack } from "../../../packages/proofpack/src/index.ts";
+import { diffProofPacks, getHistoricalProofStatus, getHistoricalVerificationFeedback, listProofPackHistory, validateProofPack } from "../../../packages/proofpack/src/index.ts";
 import { scaffoldProvider } from "../../../packages/sdk/src/scaffold.ts";
 
 interface ParsedArgs {
@@ -50,7 +50,7 @@ function optionValues(args: ParsedArgs, key: string): string[] {
 }
 
 function help(): string {
-  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  quickstart --template <id> [--title <title>]\n  doctor [--json]\n  scan\n  changes\n  intent templates [--json]\n  intent create [title] [--template <id>] [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--covers <source-path>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--base <git-ref>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  proof status [--json]\n  proof validate <proof.json> [--json]\n  proof diff <before.json> <after.json> [--json]\n  proof history [--intent <id>] [--limit <1-100>] [--json]\n  provider scaffold <name> --id <reverse-domain-id> [--directory <path>]\n  report pr-comment [proof-path] [--previous <proof-path>] [--output <path>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
+  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  quickstart --template <id> [--title <title>]\n  doctor [--json]\n  scan\n  changes\n  intent templates [--json]\n  intent create [title] [--template <id>] [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--covers <source-path>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--base <git-ref>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  proof status [--json]\n  proof feedback [--json]\n  proof validate <proof.json> [--json]\n  proof diff <before.json> <after.json> [--json]\n  proof history [--intent <id>] [--limit <1-100>] [--json]\n  provider scaffold <name> --id <reverse-domain-id> [--directory <path>]\n  report pr-comment [proof-path] [--previous <proof-path>] [--output <path>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
 }
 
 async function main(): Promise<void> {
@@ -209,6 +209,25 @@ async function main(): Promise<void> {
         "No checks were executed and no verdict was refreshed.",
       ].join("\n"));
     if (status.status !== "MATCHING_REPOSITORY_STATE") process.exitCode = 2;
+    return;
+  }
+
+  if (command === "proof" && subcommand === "feedback") {
+    const feedback = await getHistoricalVerificationFeedback(root);
+    if (args.options.has("json")) console.log(JSON.stringify(feedback, null, 2));
+    else if (feedback.status === "NOT_AVAILABLE") {
+      console.log(`Verification feedback: ${feedback.status}\n${feedback.reason}\nNext: ${feedback.nextAction}`);
+    } else if (feedback.status === "INVALID_ARTIFACT") {
+      console.log(`Verification feedback: ${feedback.status}\n${feedback.reason}\nNext: ${feedback.nextAction}`);
+    } else console.log([
+      `Verification feedback: ${feedback.status}`,
+      `Recorded verdict: ${feedback.recordedVerdict}`,
+      ...feedback.requirements.map((item) => `${item.status.padEnd(10)} ${item.requirementId}  ${item.statement}`),
+      ...feedback.reasons.map((reason) => `Reason: ${reason}`),
+      `Next: ${feedback.nextAction}`,
+      "No checks were executed and no verdict was refreshed.",
+    ].join("\n"));
+    if (feedback.status !== "MATCHING_REPOSITORY_STATE" || feedback.recordedVerdict !== "VERIFIED") process.exitCode = 2;
     return;
   }
 

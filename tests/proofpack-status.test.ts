@@ -8,7 +8,7 @@ import { join, resolve } from "node:path";
 import { initializeProject } from "../packages/core/src/project.ts";
 import { projectMindDir } from "../packages/core/src/index.ts";
 import { repositoryState } from "../packages/git/src/index.ts";
-import { getHistoricalProofStatus } from "../packages/proofpack/src/index.ts";
+import { getHistoricalProofStatus, getHistoricalVerificationFeedback } from "../packages/proofpack/src/index.ts";
 
 const exec = promisify(execFile);
 const cli = resolve("apps/cli/src/index.ts");
@@ -24,6 +24,7 @@ test("historical ProofPack status distinguishes absent, matching, stale, and inv
   await initializeProject(root);
 
   assert.equal((await getHistoricalProofStatus(root)).status, "NOT_AVAILABLE");
+  assert.match((await getHistoricalVerificationFeedback(root)).nextAction, /first ProofPack/);
   const state = await repositoryState(root);
   const proof = JSON.parse(await readFile(resolve("fixtures/proofpack-v1/valid.json"), "utf8"));
   proof.verification.repositoryState = state;
@@ -38,9 +39,15 @@ test("historical ProofPack status distinguishes absent, matching, stale, and inv
   assert.equal(matching.recordedVerdict, "VERIFIED");
   const { stdout } = await exec(process.execPath, ["--experimental-strip-types", cli, "proof", "status", "--json"], { cwd: root });
   assert.equal(JSON.parse(stdout).status, "MATCHING_REPOSITORY_STATE");
+  const feedback = await getHistoricalVerificationFeedback(root);
+  assert.equal(feedback.status, "MATCHING_REPOSITORY_STATE");
+  assert.equal(feedback.requirements[0]?.statement, proof.intent.requirements[0].statement);
+  const feedbackCli = await exec(process.execPath, ["--experimental-strip-types", cli, "proof", "feedback", "--json"], { cwd: root });
+  assert.equal(JSON.parse(feedbackCli.stdout).recordedVerdict, "VERIFIED");
 
   await writeFile(join(root, "src/index.ts"), "export const value = 2;\n");
   assert.equal((await getHistoricalProofStatus(root)).status, "STALE");
+  assert.match((await getHistoricalVerificationFeedback(root)).nextAction, /run fresh verification/);
   await assert.rejects(exec(process.execPath, ["--experimental-strip-types", cli, "proof", "status"], { cwd: root }), (error: unknown) => {
     assert.match(String((error as { stdout?: string }).stdout), /Historical ProofPack: STALE/);
     return (error as { code?: number }).code === 2;
@@ -48,4 +55,5 @@ test("historical ProofPack status distinguishes absent, matching, stale, and inv
 
   await writeFile(join(projectMindDir(root), "latest-proof.json"), "{}\n");
   assert.equal((await getHistoricalProofStatus(root)).status, "INVALID_ARTIFACT");
+  assert.equal((await getHistoricalVerificationFeedback(root)).status, "INVALID_ARTIFACT");
 });

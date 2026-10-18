@@ -13,7 +13,7 @@ import { verifyProject } from "../../verifier/src/project.ts";
 import { recordMemory, searchMemory } from "../../memory/src/index.ts";
 import { getClaimReport, recordClaim } from "../../claims/src/index.ts";
 import { diagnoseProject } from "../../doctor/src/index.ts";
-import { diffProofPackHistory, getHistoricalProofStatus, listProofPackHistory } from "../../proofpack/src/index.ts";
+import { diffProofPackHistory, getHistoricalProofStatus, getHistoricalVerificationFeedback, listProofPackHistory } from "../../proofpack/src/index.ts";
 
 export interface McpOptions { allowExecution?: boolean; allowMutations?: boolean; exposeDisabledTools?: boolean; }
 export interface McpHttpOptions extends McpOptions {
@@ -81,6 +81,11 @@ export function createMcpServer(root: string, options: McpOptions = {}): McpServ
     inputSchema: {},
     annotations: readOnlyAnnotations,
   }, async () => content(await getHistoricalProofStatus(root)));
+  server.registerTool("projectmind_get_verification_feedback", {
+    description: "Return compact, structured remediation feedback from the latest validated historical ProofPack without executing checks or refreshing its verdict.",
+    inputSchema: {},
+    annotations: readOnlyAnnotations,
+  }, async () => content(await getHistoricalVerificationFeedback(root)));
   server.registerTool("projectmind_list_proof_history", {
     description: "List validated historical ProofPack metadata without reading arbitrary paths, executing checks, or refreshing a verdict.",
     inputSchema: {
