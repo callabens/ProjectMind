@@ -2,7 +2,13 @@
 
 ProjectMind is a local stdio MCP server built with the official TypeScript SDK. It reads `CLAUDE_PROJECT_DIR`, which Claude Code supplies to stdio servers, so project-scoped sessions resolve the repository root without a nonstandard `cwd` field.
 
-After installing a ProjectMind preview package so the `projectmind` binary is on `PATH`, copy [`project.mcp.example.json`](project.mcp.example.json) to `.mcp.json` in the target repository. Keep execution disabled while validating the connection:
+After installing a ProjectMind preview package so the `projectmind` binary is on `PATH`, generate or safely extend `.mcp.json` in the target repository:
+
+```bash
+projectmind integration init claude-code
+```
+
+The command preserves unrelated top-level settings and MCP servers, refuses to replace an existing `projectmind` entry, and keeps execution disabled. You can also copy [`project.mcp.example.json`](project.mcp.example.json) manually or run `projectmind integration config claude-code` to inspect the generated object without writing a file:
 
 ```json
 {
