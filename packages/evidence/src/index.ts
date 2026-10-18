@@ -99,7 +99,7 @@ export function parseLcovCoverage(rootInput: string, input: string): NonNullable
   };
 }
 
-function run(root: string, item: VerificationCommand): Promise<{ exitCode: number; stdout: string; stderr: string; termination?: NonNullable<EvidenceRecord["termination"]> }> {
+function run(root: string, item: VerificationCommand): Promise<{ exitCode: number; stdout: string; stderr: string; structuredOutput?: string; termination?: NonNullable<EvidenceRecord["termination"]> }> {
   return new Promise((resolve) => {
     const env = { ...process.env };
     // Node test workers otherwise suppress nested node --test runs.
@@ -107,6 +107,7 @@ function run(root: string, item: VerificationCommand): Promise<{ exitCode: numbe
     const child = spawn(item.command, { cwd: root, shell: true, env, detached: process.platform !== "win32" });
     let stdout = "";
     let stderr = "";
+    let structuredOutput = "";
     let totalBytes = 0;
     let termination: EvidenceRecord["termination"];
     const kill = () => {
@@ -121,7 +122,11 @@ function run(root: string, item: VerificationCommand): Promise<{ exitCode: numbe
     const timer = setTimeout(() => { termination = "timeout"; kill(); }, item.timeoutMs ?? 60_000);
     const append = (kind: "stdout" | "stderr", chunk: Buffer) => {
       totalBytes += chunk.length;
-      if (kind === "stdout") stdout = (stdout + String(chunk)).slice(-20_000);
+      if (kind === "stdout") {
+        const text = String(chunk);
+        stdout = (stdout + text).slice(-20_000);
+        if (item.provider === "node-test-junit") structuredOutput += text;
+      }
       else stderr = (stderr + String(chunk)).slice(-20_000);
       if (totalBytes > 1024 * 1024) { termination = "output-limit"; kill(); }
     };
@@ -131,7 +136,13 @@ function run(root: string, item: VerificationCommand): Promise<{ exitCode: numbe
     child.on("close", (code) => {
       clearTimeout(timer);
       if (process.platform !== "win32") kill();
-      resolve({ exitCode: termination ? 1 : code ?? 1, stdout, stderr, ...(termination ? { termination } : {}) });
+      resolve({
+        exitCode: termination ? 1 : code ?? 1,
+        stdout,
+        stderr,
+        ...(item.provider === "node-test-junit" ? { structuredOutput } : {}),
+        ...(termination ? { termination } : {}),
+      });
     });
   });
 }
@@ -157,7 +168,7 @@ export async function collectCommandEvidence(root: string, item: VerificationCom
   let evidenceError: string | undefined;
   if (item.provider === "node-test-junit" || item.provider === "pytest-junit") {
     try {
-      const xml = item.provider === "pytest-junit" ? await readFile(pytestReport, "utf8") : result.stdout;
+      const xml = item.provider === "pytest-junit" ? await readFile(pytestReport, "utf8") : result.structuredOutput ?? result.stdout;
       testSummary = parseJunit(xml, item.provider);
     } catch (error) {
       evidenceError = error instanceof Error ? error.message : String(error);
@@ -173,9 +184,10 @@ export async function collectCommandEvidence(root: string, item: VerificationCom
       evidenceError = evidenceError ? `${evidenceError} ${message}` : message;
     }
   }
+  const { structuredOutput: _structuredOutput, ...boundedResult } = result;
   const evidence: EvidenceRecord = {
     version: 1, id: stableId("ev", randomUUID()), kind: item.kind, command: item.command,
-    startedAt, finishedAt, durationMs: Date.now() - start, ...result,
+    startedAt, finishedAt, durationMs: Date.now() - start, ...boundedResult,
     runId, repositoryState: before, repositoryStateAfter: await repositoryState(root),
     provider: item.provider ?? "generic-command",
     ...(testSummary ? { testSummary } : {}),
