@@ -13,7 +13,7 @@ import { verifyProject } from "../../verifier/src/project.ts";
 import { recordMemory, searchMemory } from "../../memory/src/index.ts";
 import { getClaimReport, recordClaim } from "../../claims/src/index.ts";
 import { diagnoseProject } from "../../doctor/src/index.ts";
-import { getHistoricalProofStatus } from "../../proofpack/src/index.ts";
+import { getHistoricalProofStatus, listProofPackHistory } from "../../proofpack/src/index.ts";
 
 export interface McpOptions { allowExecution?: boolean; allowMutations?: boolean; exposeDisabledTools?: boolean; }
 export interface McpHttpOptions extends McpOptions {
@@ -81,6 +81,17 @@ export function createMcpServer(root: string, options: McpOptions = {}): McpServ
     inputSchema: {},
     annotations: readOnlyAnnotations,
   }, async () => content(await getHistoricalProofStatus(root)));
+  server.registerTool("projectmind_list_proof_history", {
+    description: "List validated historical ProofPack metadata without reading arbitrary paths, executing checks, or refreshing a verdict.",
+    inputSchema: {
+      intentId: z.string().regex(/^PM-\d{4,}$/).optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+    },
+    annotations: readOnlyAnnotations,
+  }, async ({ intentId, limit }) => content(await listProofPackHistory(root, {
+    ...(intentId ? { intentId } : {}),
+    ...(limit === undefined ? {} : { limit }),
+  })));
   server.registerTool("projectmind_get_claim_report", {
     description: "Report historical claim-to-evidence link strength. This never proves claim text or updates a verdict.", inputSchema: {}, annotations: readOnlyAnnotations,
   }, async () => content(await getClaimReport(root)));

@@ -69,6 +69,8 @@ Stored ProofPacks are historical artifacts. The CLI does not accept them as curr
 
 `projectmind proof status [--json]` and `projectmind_get_verification_status` validate the latest historical ProofPack and compare its recorded repository fingerprint with the current repository state. They report `NOT_AVAILABLE`, `INVALID_ARTIFACT`, `STALE`, or `MATCHING_REPOSITORY_STATE`; even the matching state remains a recorded historical verdict and does not execute checks or issue a new verdict. The CLI exits with status 2 unless the repository state matches, making missing, malformed, and stale history visible in scripts without treating the recorded verdict itself as a new verification run.
 
+`projectmind proof history` and the read-only `projectmind_list_proof_history` MCP tool list validated historical ProofPack metadata. Both support an intent filter and a bounded limit; the MCP tool reads only ProjectMind's managed proof directory and never accepts an arbitrary file path. Listing history does not execute checks, compare repository freshness, or refresh a verdict.
+
 Claims remain `UNPROVEN` data and are never verification inputs. `claim report` classifies only explicit links as `DECLARED_ONLY`, `EVIDENCE_LINKED`, or `VERIFIED_REQUIREMENT_LINKED`. The strongest level means that every referenced evidence record is passing and belongs to the named verified requirement in the latest historical ProofPack; it does not establish that the free-form claim text is true and never updates a verdict.
 
 ## Trust boundary
