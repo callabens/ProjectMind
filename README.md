@@ -88,7 +88,7 @@ Use `changes --base <git-ref>` for committed changes against a fetched ref. With
 
 For a runnable example, see [examples/basic-ts](examples/basic-ts/README.md). The regression suite exercises missing evidence → targeted test added → VERIFIED → failing behavior → NOT_VERIFIED.
 
-Run `pnpm demo` for the deterministic recording flow: an unbound passing test fails closed, an exact binding verifies, and a real regression returns the verdict to `NOT_VERIFIED`. See the [demo recording guide](docs/DEMO.md).
+Run `projectmind demo --pace 900` from the installed package, or `pnpm demo -- --pace 900` from a source checkout, for the deterministic recording flow: an unbound passing test fails closed, an exact binding verifies, and a real regression returns the verdict to `NOT_VERIFIED`. See the [demo recording guide](docs/DEMO.md).
 
 The completed 21-second trust-gate recording follows the same deterministic `NOT_VERIFIED → VERIFIED → NOT_VERIFIED` flow. Publishing the binary as a GitHub-hosted attachment remains a release task.
 

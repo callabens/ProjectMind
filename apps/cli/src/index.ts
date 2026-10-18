@@ -2,6 +2,8 @@
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { initializeProject, loadConfig } from "../../../packages/core/src/project.ts";
 import { buildMindGraph, persistMindGraph } from "../../../packages/graph/src/index.ts";
 import { createIntent, bindRequirement, suggestRequirementBindings } from "../../../packages/intent/src/index.ts";
@@ -50,7 +52,7 @@ function optionValues(args: ParsedArgs, key: string): string[] {
 }
 
 function help(): string {
-  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  quickstart --template <id> [--title <title>]\n  doctor [--json]\n  scan\n  changes\n  integration init <claude-code|codex|cursor|vscode>\n  integration config <claude-code|codex|cursor|vscode|generic> [--json]\n  intent templates [--json]\n  intent create [title] [--template <id>] [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--covers <source-path>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--base <git-ref>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  proof status [--json]\n  proof feedback [--json]\n  proof validate <proof.json> [--json]\n  proof diff <before.json> <after.json> [--json]\n  proof history [--intent <id>] [--limit <1-100>] [--json]\n  provider scaffold <name> --id <reverse-domain-id> [--directory <path>]\n  report pr-comment [proof-path] [--previous <proof-path>] [--output <path>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
+  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  quickstart --template <id> [--title <title>]\n  demo [--pace <ms>] [--keep]\n  doctor [--json]\n  scan\n  changes\n  integration init <claude-code|codex|cursor|vscode>\n  integration config <claude-code|codex|cursor|vscode|generic> [--json]\n  intent templates [--json]\n  intent create [title] [--template <id>] [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--covers <source-path>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--base <git-ref>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  proof status [--json]\n  proof feedback [--json]\n  proof validate <proof.json> [--json]\n  proof diff <before.json> <after.json> [--json]\n  proof history [--intent <id>] [--limit <1-100>] [--json]\n  provider scaffold <name> --id <reverse-domain-id> [--directory <path>]\n  report pr-comment [proof-path] [--previous <proof-path>] [--output <path>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
 }
 
 type IntegrationClient = "claude-code" | "codex" | "cursor" | "vscode" | "generic";
@@ -119,6 +121,17 @@ async function main(): Promise<void> {
 
   if (args.options.has("help") || !command || command === "help" || command === "--help" || command === "-h") {
     console.log(help());
+    return;
+  }
+
+  if (command === "demo") {
+    const cliDirectory = dirname(fileURLToPath(import.meta.url));
+    const candidates = [resolve(cliDirectory, "../../../scripts/demo.mjs"), resolve(cliDirectory, "../../../../scripts/demo.mjs")];
+    const demoPath = candidates.find((candidate) => existsSync(candidate));
+    if (!demoPath) throw new Error("Packaged demo runner is missing.");
+    const result = spawnSync(process.execPath, [demoPath, ...process.argv.slice(3)], { stdio: "inherit" });
+    if (result.error) throw result.error;
+    process.exitCode = result.status ?? 1;
     return;
   }
 
