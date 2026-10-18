@@ -73,3 +73,22 @@ test("Codex integration config can be inspected without writing", async () => {
   });
   assert.equal(existsSync(join(root, ".codex/config.toml")), false);
 });
+
+
+test("VS Code integration uses the project servers format and preserves settings", async () => {
+  const root = await mkdtemp(join(tmpdir(), "projectmind-integration-"));
+  await mkdir(join(root, ".vscode"));
+  await writeFile(join(root, ".vscode/mcp.json"), JSON.stringify({ servers: { existing: { type: "http", url: "https://example.test/mcp" } }, inputs: [] }));
+  const result = await run(root, ["integration", "init", "vscode"]);
+  assert.match(result.stdout, /Execution remains disabled/);
+  const config = JSON.parse(await readFile(join(root, ".vscode/mcp.json"), "utf8"));
+  assert.deepEqual(config.servers.existing, { type: "http", url: "https://example.test/mcp" });
+  assert.deepEqual(config.servers.projectmind, {
+    type: "stdio",
+    command: "projectmind",
+    args: ["mcp"],
+    env: { PROJECTMIND_ALLOW_EXECUTION: "0" },
+  });
+  assert.deepEqual(config.inputs, []);
+  await assert.rejects(run(root, ["integration", "init", "vscode"]), /already defines/);
+});
