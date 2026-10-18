@@ -11,6 +11,7 @@ import { repositoryState } from "../packages/git/src/index.ts";
 import { getHistoricalProofStatus } from "../packages/proofpack/src/index.ts";
 
 const exec = promisify(execFile);
+const cli = resolve("apps/cli/src/index.ts");
 
 test("historical ProofPack status distinguishes absent, matching, stale, and invalid artifacts", async () => {
   const root = await mkdtemp(join(tmpdir(), "projectmind-proof-status-"));
@@ -35,9 +36,15 @@ test("historical ProofPack status distinguishes absent, matching, stale, and inv
   const matching = await getHistoricalProofStatus(root);
   assert.equal(matching.status, "MATCHING_REPOSITORY_STATE");
   assert.equal(matching.recordedVerdict, "VERIFIED");
+  const { stdout } = await exec(process.execPath, ["--experimental-strip-types", cli, "proof", "status", "--json"], { cwd: root });
+  assert.equal(JSON.parse(stdout).status, "MATCHING_REPOSITORY_STATE");
 
   await writeFile(join(root, "src/index.ts"), "export const value = 2;\n");
   assert.equal((await getHistoricalProofStatus(root)).status, "STALE");
+  await assert.rejects(exec(process.execPath, ["--experimental-strip-types", cli, "proof", "status"], { cwd: root }), (error: unknown) => {
+    assert.match(String((error as { stdout?: string }).stdout), /Historical ProofPack: STALE/);
+    return (error as { code?: number }).code === 2;
+  });
 
   await writeFile(join(projectMindDir(root), "latest-proof.json"), "{}\n");
   assert.equal((await getHistoricalProofStatus(root)).status, "INVALID_ARTIFACT");
