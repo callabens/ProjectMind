@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { isAbsolute, join, resolve } from "node:path";
-import { readFile, writeFile } from "node:fs/promises";
+import { dirname, isAbsolute, join, resolve } from "node:path";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { initializeProject, loadConfig } from "../../../packages/core/src/project.ts";
 import { buildMindGraph, persistMindGraph } from "../../../packages/graph/src/index.ts";
@@ -50,7 +50,44 @@ function optionValues(args: ParsedArgs, key: string): string[] {
 }
 
 function help(): string {
-  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  quickstart --template <id> [--title <title>]\n  doctor [--json]\n  scan\n  changes\n  intent templates [--json]\n  intent create [title] [--template <id>] [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--covers <source-path>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--base <git-ref>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  proof status [--json]\n  proof feedback [--json]\n  proof validate <proof.json> [--json]\n  proof diff <before.json> <after.json> [--json]\n  proof history [--intent <id>] [--limit <1-100>] [--json]\n  provider scaffold <name> --id <reverse-domain-id> [--directory <path>]\n  report pr-comment [proof-path] [--previous <proof-path>] [--output <path>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
+  return `ProjectMind v${PROJECTMIND_VERSION}\n\nCommands:\n  init\n  quickstart --template <id> [--title <title>]\n  doctor [--json]\n  scan\n  changes\n  integration init <claude-code|cursor>\n  integration config <claude-code|cursor|generic> [--json]\n  intent templates [--json]\n  intent create [title] [--template <id>] [--require <text>] [--preserve <text>] [--out-of-scope <text>]\n  intent bind <requirement-id> --command <configured-command> [--test <exact-name>] [--covers <source-path>] [--intent <id>]\n  intent suggest [requirement-id] [--intent <id>] [--base <git-ref>] [--json]\n  verify [intent-id] [--base <git-ref>]\n  proof status [--json]\n  proof feedback [--json]\n  proof validate <proof.json> [--json]\n  proof diff <before.json> <after.json> [--json]\n  proof history [--intent <id>] [--limit <1-100>] [--json]\n  provider scaffold <name> --id <reverse-domain-id> [--directory <path>]\n  report pr-comment [proof-path] [--previous <proof-path>] [--output <path>]\n  claim record <text> [--evidence <id>] [--intent <id>] [--requirement <id>]\n  claim report\n  remember <decision|constraint|incident> <text>\n  recall <query> [--type <decision|constraint|incident>] [--limit <1-50>]\n  mcp\n  mcp-http [--host <host>] [--port <port>]\n`;
+}
+
+type IntegrationClient = "claude-code" | "cursor" | "generic";
+
+function integrationServer(client: IntegrationClient): Record<string, unknown> {
+  return {
+    ...(client === "generic" ? {} : { type: "stdio" }),
+    command: "projectmind",
+    args: ["mcp"],
+    env: { PROJECTMIND_ALLOW_EXECUTION: "0" },
+    ...(client === "claude-code" ? { timeout: 600000 } : {}),
+  };
+}
+
+function integrationConfig(client: IntegrationClient): { mcpServers: { projectmind: Record<string, unknown> } } {
+  return { mcpServers: { projectmind: integrationServer(client) } };
+}
+
+async function installIntegration(root: string, client: Exclude<IntegrationClient, "generic">): Promise<string> {
+  const relativePath = client === "claude-code" ? ".mcp.json" : join(".cursor", "mcp.json");
+  const path = join(root, relativePath);
+  let document: Record<string, unknown> = {};
+  if (existsSync(path)) {
+    const parsed = JSON.parse(await readFile(path, "utf8")) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error(`${relativePath} must contain a JSON object.`);
+    document = parsed as Record<string, unknown>;
+  }
+  const existingServers = document.mcpServers;
+  if (existingServers !== undefined && (!existingServers || typeof existingServers !== "object" || Array.isArray(existingServers))) {
+    throw new Error(`${relativePath} mcpServers must be a JSON object.`);
+  }
+  const mcpServers = { ...((existingServers ?? {}) as Record<string, unknown>) };
+  if (mcpServers.projectmind !== undefined) throw new Error(`${relativePath} already defines mcpServers.projectmind; review it manually.`);
+  mcpServers.projectmind = integrationServer(client);
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, `${JSON.stringify({ ...document, mcpServers }, null, 2)}\n`, "utf8");
+  return relativePath;
 }
 
 async function main(): Promise<void> {
@@ -103,6 +140,22 @@ async function main(): Promise<void> {
       ...(report.diagnostics.length ? report.diagnostics.map((item) => `${item.severity.toUpperCase()} ${item.code}: ${item.message}${item.remedy ? `\n  ${item.remedy}` : ""}`) : ["No configuration or binding problems found."]),
     ].join("\n"));
     if (report.status !== "READY") process.exitCode = 2;
+    return;
+  }
+
+  if (command === "integration" && subcommand === "config") {
+    const client = rest[0];
+    if (client !== "claude-code" && client !== "cursor" && client !== "generic") throw new Error("Usage: projectmind integration config <claude-code|cursor|generic> [--json]");
+    const config = integrationConfig(client);
+    console.log(args.options.has("json") ? JSON.stringify(config) : JSON.stringify(config, null, 2));
+    return;
+  }
+
+  if (command === "integration" && subcommand === "init") {
+    const client = rest[0];
+    if (client !== "claude-code" && client !== "cursor") throw new Error("Usage: projectmind integration init <claude-code|cursor>");
+    const path = await installIntegration(root, client);
+    console.log(`Configured ProjectMind for ${client} in ${path}. Execution remains disabled.`);
     return;
   }
 

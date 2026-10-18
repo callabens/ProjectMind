@@ -97,6 +97,7 @@ Free-form claims can carry explicit evidence, intent, and requirement links. `pr
 ## MCP and CI
 
 - [Claude Code setup](integrations/claude-code/README.md)
+- [Cursor setup](integrations/cursor/README.md)
 - [Online MCP / Claude custom connector](docs/ONLINE_MCP.md)
 - [Generic MCP setup](integrations/generic-mcp/README.md)
 - [GitHub Action setup](integrations/github-action/README.md)
