@@ -9,7 +9,7 @@ import { join, resolve } from "node:path";
 
 const exec = promisify(execFile);
 const cli = resolve("apps/cli/src/index.ts");
-const run = (root: string, args: string[]) => exec(process.execPath, ["--experimental-strip-types", cli, ...args], { cwd: root });
+const run = (root: string, args: string[], env: NodeJS.ProcessEnv = process.env) => exec(process.execPath, ["--experimental-strip-types", cli, ...args], { cwd: root, env });
 
 test("integration config emits deterministic safe MCP configuration", async () => {
   const root = await mkdtemp(join(tmpdir(), "projectmind-integration-"));
@@ -97,7 +97,11 @@ test("VS Code integration uses the project servers format and preserves settings
 test("integration check validates safe configuration and fails closed on drift", async () => {
   const root = await mkdtemp(join(tmpdir(), "projectmind-integration-"));
   await run(root, ["integration", "init", "vscode"]);
-  const ready = await run(root, ["integration", "check", "vscode", "--json"]);
+  const bin = join(root, "bin");
+  await mkdir(bin);
+  await writeFile(join(bin, "projectmind"), "test fixture\n");
+  const env = { ...process.env, PATH: bin };
+  const ready = await run(root, ["integration", "check", "vscode", "--json"], env);
   assert.deepEqual(JSON.parse(ready.stdout), {
     client: "vscode",
     path: ".vscode/mcp.json",
@@ -109,7 +113,7 @@ test("integration check validates safe configuration and fails closed on drift",
   config.servers.projectmind.env.PROJECTMIND_ALLOW_EXECUTION = "1";
   await writeFile(configPath, JSON.stringify(config));
   try {
-    await run(root, ["integration", "check", "vscode", "--json"]);
+    await run(root, ["integration", "check", "vscode", "--json"], env);
     assert.fail("unsafe integration check should fail");
   } catch (error) {
     const result = error as { code: number; stdout: string };
@@ -117,5 +121,14 @@ test("integration check validates safe configuration and fails closed on drift",
     const report = JSON.parse(result.stdout);
     assert.equal(report.status, "NEEDS_ATTENTION");
     assert.deepEqual(report.issues.map((issue: { code: string }) => issue.code), ["EXECUTION_NOT_DISABLED"]);
+  }
+  config.servers.projectmind.env.PROJECTMIND_ALLOW_EXECUTION = "0";
+  await writeFile(configPath, JSON.stringify(config));
+  try {
+    await run(root, ["integration", "check", "vscode", "--json"], { ...process.env, PATH: "" });
+    assert.fail("missing command should fail");
+  } catch (error) {
+    const report = JSON.parse((error as { stdout: string }).stdout);
+    assert.deepEqual(report.issues.map((issue: { code: string }) => issue.code), ["COMMAND_NOT_FOUND"]);
   }
 });
