@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased — 0.1.0-dev.2 preview candidate
+## Unreleased — 0.1.0-dev.3 preview candidate
+
+- Add `projectmind_get_overview` as the preferred read-only MCP entry point for project context, active intent and historical verification status.
+- Add fail-closed `projectmind integration check` validation for Claude Code, Codex, Cursor and VS Code project configuration.
+- Detect a missing `projectmind` executable on `PATH` without launching configured commands.
+
+## 0.1.0-dev.2 — 2026-10-18
 
 - Add deterministic `projectmind proof diff` text and JSON output for verdict and requirement transitions between validated ProofPacks.
 - Add validated, filterable `projectmind proof history` output for local ProofPack timelines.
@@ -30,9 +36,11 @@
 - Add the first real-repository pilot: checked-in configuration, Constitution and exact-test intent let ProjectMind verify its own trust boundaries in CI and publish the resulting ProofPack artifact.
 - Add a fail-closed stable-release readiness check, publication checklist, complete npm metadata, package-name-independent smoke imports, and declaration-file-safe TypeScript scanning.
 - Add a deterministic, network-free demo runner and tested recording storyboard for the complete `NOT_VERIFIED → VERIFIED → NOT_VERIFIED` trust-gate flow.
+- Ship the trust-gate walkthrough as the packaged `projectmind demo` command.
+- Add safe, no-overwrite MCP configuration generators for Claude Code, Codex, Cursor and VS Code/GitHub Copilot.
 - Add Engineering Memory Lite with versioned local decision/constraint/incident records, deterministic ranked retrieval, CLI recall, and a read-only MCP search tool.
 - Document trust limits and scope the roadmap to the v0.3 application candidate.
 
-No stable release has occurred. The first public development preview remains available as `@callabens/projectmind@0.1.0-dev.1` on npm. The changes above are prepared for the reviewed `0.1.0-dev.2` preview candidate.
+No stable release has occurred. Public development previews `0.1.0-dev.1` and `0.1.0-dev.2` are available on npm; the `next` tag currently points to `0.1.0-dev.2`.
 
-The manifest is prepared for `@callabens/projectmind@0.1.0-dev.2` on the non-default `next` npm tag. This does not mark a stable release or claim that the candidate has been published.
+The manifest is prepared for `@callabens/projectmind@0.1.0-dev.3` on the non-default `next` npm tag. This does not mark a stable release or claim that the candidate has been published.
