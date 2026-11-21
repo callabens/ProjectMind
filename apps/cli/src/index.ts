@@ -201,6 +201,11 @@ async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   const [command, subcommand, ...rest] = args.positionals;
 
+  if (args.options.has("version") || command === "version" || command === "-v") {
+    console.log(PROJECTMIND_VERSION);
+    return;
+  }
+
   if (args.options.has("help") || !command || command === "help" || command === "--help" || command === "-h") {
     console.log(help().replace(
       "integration check <claude-code|codex|cursor|vscode> [--json]",
