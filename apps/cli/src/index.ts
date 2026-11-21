@@ -121,6 +121,25 @@ interface IntegrationCheck {
   issues: Array<{ code: string; message: string }>;
 }
 
+const INTEGRATION_CLIENTS = ["claude-code", "codex", "cursor", "vscode"] as const;
+
+interface IntegrationCheckSummary {
+  status: "READY" | "NEEDS_ATTENTION";
+  integrations: Array<IntegrationCheck | (Omit<IntegrationCheck, "status"> & { status: "NOT_CONFIGURED" })>;
+}
+
+async function checkAllIntegrations(root: string): Promise<IntegrationCheckSummary> {
+  const reports = await Promise.all(INTEGRATION_CLIENTS.map((client) => checkIntegration(root, client)));
+  const integrations = reports.map((report) => report.issues.length === 1 && report.issues[0]?.code === "CONFIG_MISSING"
+    ? { ...report, status: "NOT_CONFIGURED" as const, issues: [] }
+    : report);
+  const configured = integrations.filter((report) => report.status !== "NOT_CONFIGURED");
+  return {
+    status: configured.length > 0 && configured.every((report) => report.status === "READY") ? "READY" : "NEEDS_ATTENTION",
+    integrations,
+  };
+}
+
 function resolveExecutable(command: string): string | undefined {
   if (isAbsolute(command) || command.includes("/") || command.includes("\\\\")) return existsSync(command) ? command : undefined;
   const extensions = process.platform === "win32" ? (process.env.PATHEXT ?? ".COM;.EXE;.BAT;.CMD").split(";") : [""];
@@ -183,7 +202,10 @@ async function main(): Promise<void> {
   const [command, subcommand, ...rest] = args.positionals;
 
   if (args.options.has("help") || !command || command === "help" || command === "--help" || command === "-h") {
-    console.log(help());
+    console.log(help().replace(
+      "integration check <claude-code|codex|cursor|vscode> [--json]",
+      "integration check <claude-code|codex|cursor|vscode|all> [--json]",
+    ));
     return;
   }
 
@@ -243,7 +265,18 @@ async function main(): Promise<void> {
 
   if (command === "integration" && subcommand === "check") {
     const client = rest[0];
-    if (client !== "claude-code" && client !== "codex" && client !== "cursor" && client !== "vscode") throw new Error("Usage: projectmind integration check <claude-code|codex|cursor|vscode> [--json]");
+    if (client === "all") {
+      const summary = await checkAllIntegrations(root);
+      if (args.options.has("json")) console.log(JSON.stringify(summary, null, 2));
+      else console.log([
+        `Integration summary: ${summary.status}`,
+        "",
+        ...summary.integrations.map((report) => `${report.client.padEnd(11)} ${report.status.padEnd(15)} ${report.path}${report.issues.length ? `\n  ${report.issues.map((issue) => `${issue.code}: ${issue.message}`).join("\n  ")}` : ""}`),
+      ].join("\n"));
+      if (summary.status !== "READY") process.exitCode = 2;
+      return;
+    }
+    if (client !== "claude-code" && client !== "codex" && client !== "cursor" && client !== "vscode") throw new Error("Usage: projectmind integration check <claude-code|codex|cursor|vscode|all> [--json]");
     const report = await checkIntegration(root, client);
     if (args.options.has("json")) console.log(JSON.stringify(report, null, 2));
     else console.log([`Integration ${client}: ${report.status}`, `Config: ${report.path}`, ...(report.issues.length ? ["", ...report.issues.map((issue) => `${issue.code}: ${issue.message}`)] : ["Safe project-scoped MCP configuration is present."] )].join("\n"));
