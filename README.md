@@ -56,6 +56,7 @@ Install the development preview from npm:
 
 ```bash
 npm install --global @callabens/projectmind@next
+projectmind --version
 projectmind --help
 ```
 
