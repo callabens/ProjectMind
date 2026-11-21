@@ -132,3 +132,34 @@ test("integration check validates safe configuration and fails closed on drift",
     assert.deepEqual(report.issues.map((issue: { code: string }) => issue.code), ["COMMAND_NOT_FOUND"]);
   }
 });
+
+test("integration check all summarizes configured clients without requiring every editor", async () => {
+  const root = await mkdtemp(join(tmpdir(), "projectmind-integration-"));
+  await run(root, ["integration", "init", "vscode"]);
+  const bin = join(root, "bin");
+  await mkdir(bin);
+  await writeFile(join(bin, "projectmind"), "test fixture\n");
+  const { stdout } = await run(root, ["integration", "check", "all", "--json"], { ...process.env, PATH: bin });
+  const summary = JSON.parse(stdout);
+  assert.equal(summary.status, "READY");
+  assert.deepEqual(summary.integrations.map((report: { client: string; status: string }) => [report.client, report.status]), [
+    ["claude-code", "NOT_CONFIGURED"],
+    ["codex", "NOT_CONFIGURED"],
+    ["cursor", "NOT_CONFIGURED"],
+    ["vscode", "READY"],
+  ]);
+});
+
+test("integration check all fails closed when no client is configured", async () => {
+  const root = await mkdtemp(join(tmpdir(), "projectmind-integration-"));
+  try {
+    await run(root, ["integration", "check", "all", "--json"]);
+    assert.fail("empty integration summary should fail");
+  } catch (error) {
+    const result = error as { code: number; stdout: string };
+    assert.equal(result.code, 2);
+    const summary = JSON.parse(result.stdout);
+    assert.equal(summary.status, "NEEDS_ATTENTION");
+    assert.ok(summary.integrations.every((report: { status: string }) => report.status === "NOT_CONFIGURED"));
+  }
+});
